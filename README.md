@@ -1,5 +1,8 @@
 # TVBox Desktop
 
+[![Release](https://img.shields.io/github/v/release/hgtuj5688/tvbox-desktop?label=%E4%B8%8B%E8%BD%BD&color=2563EB)](https://github.com/hgtuj5688/tvbox-desktop/releases/latest)
+[![License](https://img.shields.io/github/license/hgtuj5688/tvbox-desktop?color=16A34A)](LICENSE)
+
 纯白极简的 Windows 影视聚合客户端。吃安卓 TVBox 的配置订阅格式，用桌面端更好用的交互方式呈现。
 
 ![首页](shots/home.png)
@@ -20,12 +23,15 @@
 
 ## 下载安装
 
-去 [Releases](https://github.com/hgtuj5688/tvbox-desktop/releases) 下载，两个文件选一个：
+去 **[Releases](https://github.com/hgtuj5688/tvbox-desktop/releases/latest)** 下载，两个文件选一个：
 
 | 文件 | 用途 |
 |---|---|
-| `TVBox Desktop-0.1.0-x64.exe` | **安装版**（推荐）。双击一路下一步，会建开始菜单与桌面快捷方式，可在控制面板卸载 |
-| `TVBox Desktop-0.1.0-x64.zip` | **免安装版**。解压到任意目录，直接跑里面的 `TVBox Desktop.exe` |
+| [`TVBox.Desktop-0.1.0-x64.exe`](https://github.com/hgtuj5688/tvbox-desktop/releases/download/v0.1.0/TVBox.Desktop-0.1.0-x64.exe) | **安装版（推荐）**。双击一路下一步，会建开始菜单与桌面快捷方式，可在「应用和功能」里卸载 |
+| [`TVBox.Desktop-0.1.0-x64.zip`](https://github.com/hgtuj5688/tvbox-desktop/releases/download/v0.1.0/TVBox.Desktop-0.1.0-x64.zip) | **免安装版**。解压到任意目录，直接跑里面的 `TVBox Desktop.exe` |
+
+> 仓库里的文件名带空格（`TVBox Desktop-0.1.0-x64.exe`），GitHub 上传时会把空格换成点，下载下来的是上面表格里那个名字，内容一样。
+
 
 安装位置默认为 `%LOCALAPPDATA%\Programs\TVBox Desktop`；安装向导里可以改，但**别装到 `C:\Program Files` 这类需要管理员权限的目录**——那样 `data\` 写不进去，配置会退回系统用户目录。
 
@@ -447,3 +453,18 @@ data/
 - 首页内容位只按「最近更新」或指定分类拉一页（每行最多 24 条），没有「换一批」；配置里也只能写 `site` / `typeId`，不支持写 `filters`。
 - 外部播放器检测是**扫路径 + 问注册表**，不是遍历全盘。装在 `D:\某处\` 这种自定义目录的播放器扫不到，得手填一次；手填之后它会一直出现在检测结果里。
 - 这台开发机上 `raw.githubusercontent.com` 不可达，从公开聚合配置里批量抽接口的路子走不通，只能用 `probe-apis.mjs` 逐个探活。
+
+---
+
+## 免责声明
+
+- 本项目**只是一个播放器壳**，不含任何影视内容，也不提供、不托管、不存储任何视频资源。
+- 所有内容都来自**使用者自己添加的第三方配置订阅**。软件按订阅里写的地址去请求，就像浏览器按你输入的网址去访问一样。
+- 内置的「公开可用源」是一份**实测存活**的公开采集接口清单，仅作为上手示例。这些站点随时可能失效或变更，项目的维护者**不对其可用性、合法性、内容负责**。
+- 请仅将本项目用于**学习 Electron / React / TypeScript 的桌面开发**，并遵守你所在地区的法律法规。请通过官方渠道观看正版内容。
+- 因使用本项目产生的任何后果，由使用者自行承担。
+
+## 许可
+
+[MIT](LICENSE)
+
