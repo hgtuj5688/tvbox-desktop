@@ -18,6 +18,23 @@
 
 ---
 
+## 下载安装
+
+去 [Releases](https://github.com/hgtuj5688/tvbox-desktop/releases) 下载，两个文件选一个：
+
+| 文件 | 用途 |
+|---|---|
+| `TVBox Desktop-0.1.0-x64.exe` | **安装版**（推荐）。双击一路下一步，会建开始菜单与桌面快捷方式，可在控制面板卸载 |
+| `TVBox Desktop-0.1.0-x64.zip` | **免安装版**。解压到任意目录，直接跑里面的 `TVBox Desktop.exe` |
+
+安装位置默认为 `%LOCALAPPDATA%\Programs\TVBox Desktop`；安装向导里可以改，但**别装到 `C:\Program Files` 这类需要管理员权限的目录**——那样 `data\` 写不进去，配置会退回系统用户目录。
+
+> 程序**没有代码签名证书**，所以首次运行 Windows SmartScreen 会拦一下：点「更多信息」→「仍要运行」即可。这不是病毒提示，只是没买证书。
+>
+> 卸载时 `data\` 会跟着安装目录一起删掉（收藏、观看历史、配置源都在那里）。想留着就先把它复制出来。
+
+---
+
 ## 快速开始
 
 ```bash
@@ -42,6 +59,20 @@ node node_modules/electron/install.js
 | `npm run typecheck` | 主进程与渲染进程双工程类型检查 |
 | `npm run build` | 产出 `out/`（主进程 / preload / 渲染进程） |
 | `npm run build:win` | electron-builder 打包出 NSIS 安装包与免安装 zip |
+
+打包会先跑 `electron-vite build`，再由 electron-builder 把产物写到 `release/`：NSIS 安装包、免安装 zip、以及 `latest.yml`（增量更新元数据）。国内网络下要给 builder 自己的二进制也指个镜像，否则下载 nsis / 7zip 会卡住：
+
+```powershell
+$env:ELECTRON_BUILDER_BINARIES_MIRROR="https://npmmirror.com/mirrors/electron-builder-binaries/"
+npm run build:win
+```
+
+应用图标是**代码生成**的，不依赖任何设计工具：改完配色或造型跑一次就会重新写出 `build/icon.png`（512×512）与多尺寸 `build/icon.ico`（16/24/32/48/64/128/256，直接内嵌 PNG）。electron-builder 会自动认 `build/` 下的这一对文件。
+
+```bash
+node scripts/make-icon.mjs
+```
+
 
 ## 目录结构
 
@@ -92,6 +123,7 @@ samples/
 shots/                 界面截图（firstrun / home / browse / sites / settings / settings-parse / settings-player / search / detail / player / library / library-history / live）
 scripts/
   ensure-electron.cjs  postinstall 时补下载 Electron
+  make-icon.mjs        生成 build/icon.png 与多尺寸 icon.ico（零依赖，自己编 PNG）
   selftest.mjs         端到端自检
   stub-server.mjs      本地桩服务器（苹果CMS + 网页规则站 + 假 m3u8 + 占位海报）
   eval.mjs             往运行中的窗口丢一段 JS 执行
@@ -100,6 +132,9 @@ scripts/
   apply-sources.mjs    把一份本地配置推进运行中的窗口，并跑连通性 / 搜索 / 详情全链路
   candidates.txt       探活用的候选清单（每行「名字 地址」）
   candidates3.txt      同上，第二批
+build/
+  icon.png / icon.ico  应用图标（由 scripts/make-icon.mjs 生成）
+electron-builder.yml   打包配置（NSIS + zip，产物落 release/）
 ```
 
 ## 配置 JSON 怎么写
