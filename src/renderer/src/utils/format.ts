@@ -9,13 +9,6 @@ export function relativeTime(ts: number): string {
   return new Date(ts).toLocaleDateString('zh-CN')
 }
 
-export function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
-}
-
 /** 秒数转时钟：95 → 1:35，1387 → 23:07，4000 → 1:06:40 */
 export function formatClock(seconds: number): string {
   const s = Math.max(0, Math.round(seconds))

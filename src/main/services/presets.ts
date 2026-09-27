@@ -2,14 +2,17 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
 import type { ConfigSource, SourcePresetInfo } from '@shared/types'
-import { addSource, listSources } from './sources'
+import { addSource, listSources, syncSource } from './sources'
+import { readStore, writeStore } from './store'
+
+/** 记住「内置订阅已经送过了」，避免用户删光后重启又冒出来 */
+const BUNDLED_FLAG = 'bundled-sources'
 
 /**
  * 内置推荐订阅。
  *
- * 按之前定的产品决策：「内置但默认关闭」——首启页与设置页会把它们列出来，
- * 用户点一下才写进配置源。不默认启用是因为这些公开采集接口随时可能失效，
- * 也可能有地区 / 合规方面的差异，让用户自己选更稳妥。
+ * 打包版走 `ensureBundledSources()`：装完直接就是「带源」状态，打开就能搜。
+ * 设置页里仍然把它列出来，用户可以随时删掉，删干净了也不会自己长回来。
  *
  * 点「添加」时会把配置内容落到 <数据目录>/presets/<id>.json，
  * 而不是引用仓库里的 samples/，这样仓库删了、应用换台机器也能继续用。
@@ -133,5 +136,37 @@ export async function addPreset(id: string): Promise<ConfigSource> {
   const already = existing.find((s) => s.url === file)
   if (already) throw new Error('这个内置订阅已经添加过了')
   return addSource({ name: preset.name, url: file, kind: 'file' })
+}
+
+/**
+ * 首启把内置订阅装好，让打包版「装完即用」。
+ *
+ * 只在一个配置源都没有的时候执行 —— 用户自己删光了就不该再冒出来。
+ * 装上之后立刻同步一次，这样首屏的「影视源」和「电视直播」就有数据，
+ * 不用等用户手动点「同步配置」。
+ *
+ * 只带**订阅源**，不带设置：API Key、外部播放器路径、收藏与观看历史
+ * 都属于使用者的个人数据，绝不能跟着安装包发出去。
+ *
+ * 用一个标志位记住「已经送过了」：用户之后自己把源删光、重启，不会又长回来。
+ */
+export async function ensureBundledSources(): Promise<boolean> {
+  if (SOURCE_PRESETS.length === 0) return false
+  if (await readStore<boolean>(BUNDLED_FLAG, false)) return false
+  const existing = await listSources()
+  if (existing.length) {
+    await writeStore(BUNDLED_FLAG, true)
+    return false
+  }
+  try {
+    const source = await addPreset(SOURCE_PRESETS[0].id)
+    await writeStore(BUNDLED_FLAG, true)
+    await syncSource(source.id)
+    return true
+  } catch (err) {
+    // 写不进去就退回首启引导页，用户仍然可以手动添加
+    console.error('[presets] 首启写入内置订阅失败：', err)
+    return false
+  }
 }
 

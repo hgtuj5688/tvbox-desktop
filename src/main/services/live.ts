@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import type { LiveGroupEntry, LiveResult, LiveSourceStat, ParsedConfig } from '@shared/types'
+import { isHttpUrl } from '@shared/liveUrl'
 import { getSettings } from './settings'
 import { fetchText } from './http'
 import { getParsed, listSources } from './sources'
@@ -20,8 +21,6 @@ interface RawChannel {
   group: string
   logo?: string
 }
-
-const isHttp = (url: string): boolean => /^https?:\/\//i.test(url)
 
 /** 能直接当播放地址的写法（huya:// 与 douyin:// 是房间号，播放前才换成真地址） */
 const ADDRESS_RE = /^(https?|rtmp|rtsp|rtp|udp|file|huya|douyin):\/\//i
@@ -135,7 +134,7 @@ export function parseLiveContent(text: string): RawChannel[] {
 }
 
 async function readSource(source: { url: string }, timeout: number): Promise<string> {
-  if (isHttp(source.url)) return fetchText(source.url, { timeout })
+  if (isHttpUrl(source.url)) return fetchText(source.url, { timeout })
   // 本地文件：支持 file:/// 与 Windows 盘符路径
   const path = source.url.replace(/^file:\/\/\/?/i, '')
   return readFile(decodeURIComponent(path), 'utf8')

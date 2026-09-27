@@ -1,5 +1,5 @@
 import type { LiveChannelEntry, LiveHealth } from '@shared/types'
-import { isRoomUrl, roomPlatform } from '@shared/liveUrl'
+import { isHttpUrl, isRoomUrl, roomPlatform } from '@shared/liveUrl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { EmptyState } from '@/components/EmptyState'
@@ -8,11 +8,6 @@ import { useApp } from '@/store/useApp'
 import { createArt } from '@/utils/artplayer'
 
 type HealthMap = Record<string, LiveHealth>
-
-/** 只有 http(s) 能提前体检；huya:// 这类房间号要现场换地址，算「还不知道」 */
-function probeable(url: string): boolean {
-  return /^https?:\/\//i.test(url)
-}
 
 /** 一个频道整体的线路状态 */
 interface ChannelHealth {
@@ -26,7 +21,7 @@ function healthOf(urls: string[], table: HealthMap): ChannelHealth {
   let dead = 0
   let unknown = 0
   for (const u of urls) {
-    if (!probeable(u)) {
+    if (!isHttpUrl(u)) {
       unknown++
       continue
     }
@@ -100,7 +95,7 @@ export function Live(): JSX.Element {
 
   /** 某条线路的体检结果，用来在切线路的 chip 上打点 */
   const urlHealth = useCallback(
-    (target: string): LiveHealth | undefined => (probeable(target) ? health[target] : undefined),
+    (target: string): LiveHealth | undefined => (isHttpUrl(target) ? health[target] : undefined),
     [health]
   )
 
@@ -127,7 +122,7 @@ export function Live(): JSX.Element {
   const warm = useCallback(
     async (list: LiveChannelEntry[]): Promise<void> => {
       const urls = [...new Set(list.flatMap((c) => c.urls.map((u) => u.url)))]
-        .filter(probeable)
+        .filter(isHttpUrl)
         .filter((u) => !warmedRef.current.has(u))
       if (!urls.length) return
       for (const u of urls) warmedRef.current.add(u)
@@ -238,14 +233,14 @@ export function Live(): JSX.Element {
       setPicked(channel)
       setPickSeq((n) => n + 1)
 
-      const known = channel.urls.findIndex((u) => probeable(u.url) && health[u.url]?.ok)
+      const known = channel.urls.findIndex((u) => isHttpUrl(u.url) && health[u.url]?.ok)
       if (known >= 0) {
         setLineIndex(known)
         return
       }
       setLineIndex(0)
 
-      const urls = channel.urls.map((u) => u.url).filter(probeable)
+      const urls = channel.urls.map((u) => u.url).filter(isHttpUrl)
       if (!urls.length) return
       setPicking(true)
       try {

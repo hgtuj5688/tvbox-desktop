@@ -17,3 +17,13 @@ export function roomPlatform(url: string): string | null {
   if (!m) return null
   return m[1].toLowerCase() === 'huya' ? '虎牙' : '抖音'
 }
+
+/**
+ * 是不是能直接发请求的 http(s) 地址。
+ *
+ * 主进程（拉直播源、体检线路）和渲染进程（判断哪些线路能提前体检）都要用：
+ * `huya://` 这类房间号得现场换地址，既不能直接请求，也不该被当成坏线路。
+ */
+export function isHttpUrl(url: string): boolean {
+  return /^https?:\/\//i.test((url ?? '').trim())
+}

@@ -1,4 +1,5 @@
 import type { LiveHealth } from '@shared/types'
+import { isHttpUrl } from '@shared/liveUrl'
 import { DEFAULT_UA, matchHeaderRules } from './http'
 import { getSettings } from './settings'
 import { getParsed, listSources } from './sources'
@@ -31,11 +32,6 @@ export type HealthMap = Record<string, LiveHealth>
 export function isFresh(h: LiveHealth | undefined, now = Date.now()): boolean {
   if (!h?.at) return false
   return now - h.at < (h.ok ? OK_TTL : FAIL_TTL)
-}
-
-/** 能体检的只有 http(s)：huya:// 这类房间号要现场解析，探不了也不该被当成坏的 */
-export function isProbeable(url: string): boolean {
-  return /^https?:\/\//i.test(url)
 }
 
 interface ProbeOutcome {
@@ -141,7 +137,7 @@ export async function probeLines(
   const now = Date.now()
 
   const unique = [...new Set(urls.map((u) => u.trim()).filter(Boolean))]
-  const targets = unique.filter(isProbeable)
+  const targets = unique.filter(isHttpUrl)
   const todo = options.force
     ? targets
     : targets.filter((u) => !isFresh(store[u], now)).slice(0, MAX_URLS)
