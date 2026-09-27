@@ -1,0 +1,64 @@
+{
+  "format": "tvbox-desktop/1",
+  "name": "本地自检配置（仅供开发验证用）",
+  "notice": "站点全部指向 127.0.0.1:8899 的本地桩服务器，用于端到端验证解析与连通性测试。",
+  "sites": [
+    {
+      "key": "self_cms_base",
+      "name": "自检·基地址式苹果CMS",
+      "type": "cms",
+      "api": "http://127.0.0.1:8899/api.php/provide/vod"
+    },
+    {
+      "key": "self_cms_tpl",
+      "name": "自检·占位符式苹果CMS",
+      "type": 3,
+      "api": "http://127.0.0.1:8899/api.php/provide/vod?ac={ac}&t={t}&pg={pg}&wd={wd}"
+    },
+    {
+      "key": "self_html_ok",
+      "name": "自检·网页规则站（选择器可匹配）",
+      "type": "html",
+      "api": "http://127.0.0.1:8899/search?wd={wd}",
+      "rules": {
+        "list": ".result-list li",
+        "name": "h3 a",
+        "link": "h3 a",
+        "pic": "img",
+        "remarks": ".note",
+        "detailName": ".detail-title",
+        "detailContent": ".detail-content",
+        "playList": ".playlist",
+        "playItem": "a"
+      }
+    },
+    {
+      "key": "self_html_bad",
+      "name": "自检·网页规则站（选择器失效）",
+      "type": "html",
+      "api": "http://127.0.0.1:8899/search?wd={wd}",
+      "rules": { "list": ".does-not-exist li" }
+    },
+    {
+      "key": "self_cms_bad",
+      "name": "自检·接口返回异常码",
+      "type": "cms",
+      "api": "http://127.0.0.1:8899/api-bad.php/provide/vod"
+    }
+  ],
+  "lives": [
+    { "name": "自检直播源（txt）", "type": 0, "url": "http://127.0.0.1:8899/live.txt" },
+    { "name": "自检直播源（m3u）", "type": 1, "url": "http://127.0.0.1:8899/live.m3u" }
+  ],
+  "parses": [{ "name": "自检解析", "type": 1, "url": "http://127.0.0.1:8899/jx?url=" }],
+  "tvboxDesktop": {
+    "home": {
+      "sections": [
+        { "title": "自检·最近更新（按站点 key）", "site": "self_cms_base" },
+        { "title": "自检·分类推荐（按中文名 + 指定分类）", "site": "自检·占位符式苹果CMS", "typeId": 6 },
+        { "title": "自检·写了个不存在的源", "site": "这个站点不存在" }
+      ]
+    }
+  },
+  "headers": [{ "host": "127.0.0.1:8899", "header": { "X-Self-Test": "1" } }]
+}

@@ -1,0 +1,63 @@
+{
+  "format": "tvbox-desktop/1",
+  "name": "本地示例配置",
+  "notice": "这是给开发者调试用的示例，站点地址都是占位域名，不能真正播放。",
+  "sites": [
+    {
+      "key": "demo_cms_a",
+      "name": "示例苹果CMS A",
+      "type": "cms",
+      "api": "https://demo-a.example.com/api.php/provide/vod",
+      "searchable": 1,
+      "categories": ["电影", "电视剧", "综艺", "动漫"]
+    },
+    {
+      "key": "demo_cms_b",
+      "name": "示例苹果CMS B（占位符写法）",
+      "type": 3,
+      "api": "https://demo-b.example.com/api.php/provide/vod/from/dbm3u8/at/json?ac={ac}&t={t}&pg={pg}&wd={wd}&ids={ids}",
+      "searchable": 1
+    },
+    {
+      "key": "demo_html",
+      "name": "示例网页规则站",
+      "type": "html",
+      "api": "https://demo-c.example.com/search?wd={wd}",
+      "searchable": 1,
+      "rules": {
+        "list": ".result-list li",
+        "name": "h3 a",
+        "link": "h3 a",
+        "pic": "img",
+        "remarks": ".note"
+      }
+    },
+    {
+      "key": "demo_spider",
+      "name": "示例 Spider 站（桌面端不支持）",
+      "type": "spider",
+      "api": "csp_DemoSpider",
+      "searchable": 1
+    },
+    {
+      "key": "demo_unknown",
+      "name": "示例未知类型站",
+      "type": "whatever",
+      "api": "https://demo-d.example.com/api"
+    }
+  ],
+  "lives": [
+    { "name": "示例直播源", "type": 0, "url": "https://demo.example.com/live.txt" },
+    { "name": "示例 m3u", "type": 0, "url": "https://demo.example.com/live.m3u" }
+  ],
+  "parses": [
+    { "name": "示例解析", "type": 1, "url": "https://demo.example.com/jx?url=" }
+  ],
+  "headers": [
+    { "host": "*.example.com", "header": { "User-Agent": "okhttp/3.12.0" } }
+  ],
+  "tvboxDesktop": {
+    "accent": "#2563EB",
+    "density": "compact"
+  }
+}

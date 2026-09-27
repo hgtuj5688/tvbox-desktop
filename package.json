@@ -1,0 +1,46 @@
+{
+  "name": "tvbox-desktop",
+  "version": "0.1.0",
+  "description": "TVBox Desktop - 纯白极简的 Windows 影视聚合客户端",
+  "main": "./out/main/index.js",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "dev:debug": "electron-vite dev -- --remote-debugging-port=9222",
+    "selftest": "node scripts/selftest.mjs",
+    "preview": "electron-vite preview",
+    "build": "electron-vite build",
+    "postinstall": "node scripts/ensure-electron.cjs",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "build:win": "electron-vite build && electron-builder --win"
+  },
+  "dependencies": {
+    "artplayer": "^5.4.0",
+    "cheerio": "^1.2.0",
+    "hls.js": "^1.7.3",
+    "iconv-lite": "^0.7.3",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.4",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.6"
+  },
+  "allowScripts": {
+    "electron@44.4.5": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true
+  }
+}

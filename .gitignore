@@ -1,0 +1,10 @@
+node_modules/
+out/
+dist/
+release/
+*.log
+.DS_Store
+.vite/
+
+# 便携数据目录（配置源、站点覆盖、设置、浏览器缓存）
+data/

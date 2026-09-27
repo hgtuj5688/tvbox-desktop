@@ -1,0 +1,90 @@
+/* ==========================================================================
+   设计变量 —— 纯白极简体系
+   界面 95% 由白色与浅灰构成，只保留一处强调色，保证「纯白但不单调」。
+   ========================================================================== */
+
+:root {
+  /* 背景 */
+  --bg: #ffffff;
+  --bg-2: #f7f8fa;
+  --bg-3: #f1f3f5;
+  --bg-hover: #f7f8fa;
+
+  /* 边框与分割 */
+  --border: #eceef2;
+  --border-strong: #e3e6eb;
+
+  /* 文字 */
+  --text: #1f2329;
+  --text-2: #646a73;
+  --text-3: #8f959e;
+  --text-4: #b8bcc3;
+
+  /* 强调色（设置里可改） */
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: #eff4ff;
+  --accent-border: #d3e0ff;
+
+  /* 语义色 */
+  --success: #16a34a;
+  --success-soft: #ecfdf3;
+  --warn: #d97706;
+  --warn-soft: #fff7ed;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+
+  /* 圆角 */
+  --radius-xs: 4px;
+  --radius-s: 6px;
+  --radius: 8px;
+  --radius-l: 12px;
+  --radius-xl: 16px;
+
+  /* 阴影：默认极淡，只在悬停时加深 */
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-2: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-3: 0 8px 24px rgba(15, 23, 42, 0.1);
+  --shadow-pop: 0 12px 32px rgba(15, 23, 42, 0.14);
+
+  /* 尺寸 */
+  --topbar-h: 56px;
+  --sidebar-w: 208px;
+  --sidebar-w-collapsed: 64px;
+
+  /* 间距（密度） */
+  --gap-xs: 4px;
+  --gap-s: 8px;
+  --gap: 12px;
+  --gap-l: 16px;
+  --gap-xl: 24px;
+
+  /* 内容区 */
+  --poster-min: 148px;
+  --poster-ratio: 1.5; /* 宽/高 = 2:3 */
+
+  /* 字体 */
+  --font: "Segoe UI", "Microsoft YaHei UI", "PingFang SC", system-ui, -apple-system, sans-serif;
+  --font-num: "SF Mono", "Cascadia Mono", Consolas, var(--font);
+
+  /* 动效 */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur: 160ms;
+}
+
+/* 紧凑密度：进一步压缩间距，一屏塞下更多内容 */
+:root[data-density='compact'] {
+  --gap-s: 6px;
+  --gap: 12px;
+  --gap-l: 14px;
+  --gap-xl: 20px;
+  --poster-min: 142px;
+}
+
+:root[data-density='comfortable'] {
+  --gap-s: 10px;
+  --gap: 16px;
+  --gap-l: 20px;
+  --gap-xl: 28px;
+  --poster-min: 168px;
+}

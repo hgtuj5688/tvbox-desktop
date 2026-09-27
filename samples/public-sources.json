@@ -1,0 +1,60 @@
+{
+  "format": "tvbox-desktop/1",
+  "name": "公开可用源（苹果CMS 采集站）",
+  "note": "实测存活的公开采集接口，全部是标准苹果CMS v10 的 /api.php/provide/vod。判断标准有三条：列表接口有数据、带 wd 的搜索有结果、详情能解析出剧集地址。这类站点随时可能失效，失效后在「影视源」页点测试就能看出来，删掉即可。",
+  "sites": [
+    {
+      "key": "ffzy",
+      "name": "非凡资源",
+      "type": "cms",
+      "api": "https://api.ffzyapi.com/api.php/provide/vod",
+      "searchable": 1
+    },
+    {
+      "key": "lzi",
+      "name": "量子资源",
+      "type": "cms",
+      "api": "https://cj.lziapi.com/api.php/provide/vod",
+      "searchable": 1
+    },
+    {
+      "key": "dyttzy",
+      "name": "电影天堂资源",
+      "type": "cms",
+      "api": "https://caiji.dyttzyapi.com/api.php/provide/vod",
+      "searchable": 1
+    },
+    {
+      "key": "guangsu",
+      "name": "光速资源",
+      "type": "cms",
+      "api": "https://api.guangsuapi.com/api.php/provide/vod",
+      "searchable": 1
+    },
+    {
+      "key": "subo",
+      "name": "素博资源",
+      "type": "cms",
+      "api": "https://subocaiji.com/api.php/provide/vod",
+      "searchable": 1
+    }
+  ],
+  "lives": [
+    {
+      "name": "公开直播源·IPv4（txt）",
+      "type": 0,
+      "url": "https://live.zbds.top/tv/iptv4.txt"
+    }
+  ],
+  "tvboxDesktop": {
+    "home": {
+      "sections": [
+        { "title": "电影 · 最近更新", "site": "dyttzy" },
+        { "title": "电影 · 动作片", "site": "ffzy", "typeId": 6 },
+        { "title": "电视剧 · 国产剧", "site": "lzi", "typeId": 13 },
+        { "title": "动漫 · 日本", "site": "guangsu", "typeId": 42 },
+        { "title": "综艺 · 最近更新", "site": "subo" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,34 @@
+appId: com.tvbox.desktop
+productName: TVBox Desktop
+copyright: Copyright © 2025
+
+directories:
+  output: release
+  buildResources: build
+
+# 只打包构建产物，源码与开发依赖不进安装包
+files:
+  - out/**/*
+  - package.json
+
+# Windows 目标：NSIS 安装包 + 免安装 zip
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: zip
+      arch: [x64]
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: TVBox Desktop
+  deleteAppDataOnUninstall: false
+
+# 国内网络下 builder 需要下载 nsis / winCodeSign 等二进制，走镜像
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/
