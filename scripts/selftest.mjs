@@ -661,7 +661,10 @@ check(
 )
 
 await evalJs("document.querySelector('.live-channel').click()")
-const mounted = await waitFor("document.querySelectorAll('.live-stage video').length", (v) => v >= 1, 15000)
+// 点频道时若这条还没轮到后台预热体检，play() 会当场探一遍再挂播放器，
+// 而单条探测的超时上限是 12s（liveHealth.ts 的 min(settings.timeout, 12)）。
+// 等待必须明显大于 12s，否则预热还没轮到该频道时会假失败（曾偶发 176/177）。
+const mounted = await waitFor("document.querySelectorAll('.live-stage video').length", (v) => v >= 1, 30000)
 check('点频道后播放器挂起来了', mounted, (v) => v >= 1)
 check(
   '播放器上标出当前频道',
