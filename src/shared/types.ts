@@ -417,6 +417,16 @@ export interface AppInfo {
   userData: string
 }
 
+/** Windows 与 macOS 之间迁移用户配置的 ZIP 数据包结果。 */
+export interface DataTransferResult {
+  path: string
+  files: string[]
+  bytes: number
+  /** 导入前的完整数据目录备份；导出时为空。 */
+  backupPath?: string
+  sourcePlatform?: string
+}
+
 export interface TestResult {
   ok: boolean
   ms: number

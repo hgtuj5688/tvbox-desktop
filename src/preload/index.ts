@@ -9,6 +9,7 @@ import type {
   CategoryBucket,
   CategoryPage,
   ConfigSource,
+  DataTransferResult,
   SourcePresetInfo,
   FavoriteItem,
   HistoryItem,
@@ -37,6 +38,11 @@ const api = {
     get: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.settingsGet),
     set: (patch: Partial<AppSettings>): Promise<AppSettings> =>
       ipcRenderer.invoke(IPC.settingsSet, patch)
+  },
+
+  data: {
+    exportBundle: (): Promise<DataTransferResult | null> => ipcRenderer.invoke(IPC.dataExport),
+    importBundle: (): Promise<DataTransferResult | null> => ipcRenderer.invoke(IPC.dataImport)
   },
 
   sources: {

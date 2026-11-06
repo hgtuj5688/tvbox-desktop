@@ -12,6 +12,19 @@ const dirty = new Set<string>()
 const timers = new Map<string, NodeJS.Timeout>()
 const DEBOUNCE_MS = 200
 
+/** 所有可迁移的 JSON store；session/cache 不属于用户数据，不进入导出包。 */
+export const STORE_NAMES = [
+  'settings',
+  'sources',
+  'sites',
+  'favorites',
+  'history',
+  'parse-stats',
+  'parses',
+  'live-health',
+  'bundled-sources'
+] as const
+
 function fileOf(name: string): string {
   return join(app.getPath('userData'), `${name}.json`)
 }
@@ -68,4 +81,12 @@ export async function flushStore(name?: string): Promise<void> {
 /** 供调试与「打开数据目录」使用 */
 export function storePath(name: string): string {
   return fileOf(name)
+}
+
+/** 导入外部数据后清掉内存缓存，下一次读取时重新从磁盘加载。 */
+export function resetStoreCache(): void {
+  for (const timer of timers.values()) clearTimeout(timer)
+  timers.clear()
+  dirty.clear()
+  memory.clear()
 }

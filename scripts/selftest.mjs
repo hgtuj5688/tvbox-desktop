@@ -1127,8 +1127,23 @@ const badProtocol = await evalJs(
 )
 check('外部播放器不认的协议会被挡住', /不是受支持的协议/.test(badProtocol), true)
 
+check('数据导出 API 已暴露', await evalJs('typeof window.api.data?.exportBundle'), 'function')
+check('数据导入 API 已暴露', await evalJs('typeof window.api.data?.importBundle'), 'function')
+
 // 界面：设置页那块的按钮得在，点了之后得给出「找到 N 个」或「一个都没找到」
 await goto('#/settings', '设置')
+check(
+  '设置页有 Windows ↔ macOS 数据迁移区块',
+  await evalJs("[...document.querySelectorAll('.section-title')].some((e) => e.textContent?.trim() === '数据迁移')"),
+  true
+)
+check(
+  '设置页有导入导出按钮',
+  await evalJs(
+    "[...document.querySelectorAll('button')].map((b) => b.textContent?.trim()).filter(Boolean).filter((t) => /导出数据包|导入数据包/.test(t)).length"
+  ),
+  2
+)
 const playerDom = JSON.parse(
   await evalJs(
     `(() => {

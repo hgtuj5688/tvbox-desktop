@@ -260,6 +260,7 @@ export function Settings(): JSX.Element {
 
         <ParseSettingsSection />
         {settings ? <GeneralSettings settings={settings} onPatch={updateSettings} platform={info?.platform} /> : null}
+        <DataTransferSection />
         {settings ? <AiSettingsSection settings={settings} onPatch={updateSettings} /> : null}
 
         <section className="section">
@@ -345,6 +346,84 @@ interface GeneralProps {
   settings: AppSettings
   onPatch: (patch: Partial<AppSettings>) => Promise<void>
   platform?: string
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/** Windows 与 macOS 之间迁移配置、收藏、历史和解析接口。 */
+function DataTransferSection(): JSX.Element {
+  const notify = useApp((s) => s.notify)
+  const [busy, setBusy] = useState<'export' | 'import' | ''>('')
+
+  const exportBundle = async (): Promise<void> => {
+    setBusy('export')
+    try {
+      const result = await window.api.data.exportBundle()
+      if (result) {
+        notify(`已导出 ${result.files.length} 个数据文件（${formatBytes(result.bytes)}）`, 'success')
+      }
+    } catch (err) {
+      notify(`导出失败：${(err as Error).message}`, 'danger')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  const importBundle = async (): Promise<void> => {
+    if (
+      !window.confirm(
+        '导入会覆盖当前的配置源、设置、收藏、历史和解析接口。应用会自动保留一份导入前备份，确定继续吗？'
+      )
+    ) {
+      return
+    }
+    setBusy('import')
+    try {
+      const result = await window.api.data.importBundle()
+      if (!result) return
+      notify(`已导入 ${result.files.length} 个数据文件，应用即将刷新`, 'success')
+      window.setTimeout(() => window.location.reload(), 250)
+    } catch (err) {
+      notify(`导入失败：${(err as Error).message}`, 'danger')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  return (
+    <section className="section">
+      <div className="section-head">
+        <div className="section-title">数据迁移</div>
+        <div className="section-more">Windows ↔ macOS</div>
+      </div>
+      <div className="panel panel-body-pad">
+        <div className="field-hint" style={{ lineHeight: 1.8 }}>
+          导出配置源、站点开关、收藏、观看历史、解析接口、线路体检记录和预置配置，生成可在 Windows 与 macOS
+          之间互换的 ZIP 数据包。应用缓存不会导出；数据包包含设置里的 API Key，请妥善保管。
+        </div>
+        <div className="hstack" style={{ marginTop: 14 }}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={Boolean(busy)}
+            onClick={() => void exportBundle()}
+          >
+            {busy === 'export' ? <span className="spin" /> : <Icon name="download" size={14} />} 导出数据包
+          </button>
+          <button type="button" className="btn" disabled={Boolean(busy)} onClick={() => void importBundle()}>
+            {busy === 'import' ? <span className="spin" /> : <Icon name="file" size={14} />} 导入数据包
+          </button>
+        </div>
+        <div className="field-hint" style={{ marginTop: 10 }}>
+          导入完成后会刷新界面；如需撤销，可使用导入时生成的数据目录备份恢复。
+        </div>
+      </div>
+    </section>
+  )
 }
 
 /** 一条解析接口的战绩，写成人话 */

@@ -34,16 +34,18 @@ import { cancelSearch, searchAll } from './services/search'
 import { DEFAULT_SETTINGS, getSettings, saveSettings } from './services/settings'
 import { getSites, setSiteEnabled, setSitesEnabled, testSite } from './services/sites'
 import { addPreset, ensureBundledSources, listPresets } from './services/presets'
+import { exportDataBundle, importDataBundle } from './services/dataMigration'
 import {
   addSource,
   hydrate,
   listSources,
   removeSource,
+  resetHydrate,
   syncAll,
   syncSource,
   updateSource
 } from './services/sources'
-import { flushStore } from './services/store'
+import { flushStore, STORE_NAMES } from './services/store'
 import { resolveDataDir, resolveSessionDir } from './platform/paths'
 
 // ── 数据目录 ────────────────────────────────────────────────────────────────
@@ -60,22 +62,10 @@ const DATA_DIR = resolveDataDir({
 })
 const SESSION_DIR = resolveSessionDir(DATA_DIR)
 
-const STORE_FILES = [
-  'settings',
-  'sources',
-  'sites',
-  'favorites',
-  'history',
-  'parse-stats',
-  'parses',
-  'live-health',
-  'bundled-sources'
-]
-
 /** 把老版本留在默认 userData 里的 store 文件搬过来，避免升级后配置丢失 */
 function migrateLegacyData(legacy: string): void {
   if (resolve(legacy) === resolve(DATA_DIR)) return
-  for (const name of STORE_FILES) {
+  for (const name of STORE_NAMES) {
     const from = join(legacy, `${name}.json`)
     const to = join(DATA_DIR, `${name}.json`)
     if (existsSync(to) || !existsSync(from)) continue
@@ -116,6 +106,10 @@ function redirectUserData(): void {
 redirectUserData()
 
 let mainWindow: BrowserWindow | null = null
+
+function dateStamp(): string {
+  return new Date().toISOString().slice(0, 10).replace(/-/g, '')
+}
 
 async function createWindow(): Promise<void> {
   const saved = (await getSettings()).window
@@ -185,6 +179,35 @@ function registerIpc(): void {
 
   ipcMain.handle(IPC.settingsGet, () => getSettings())
   ipcMain.handle(IPC.settingsSet, (_e, patch) => saveSettings(patch))
+
+  ipcMain.handle(IPC.dataExport, async () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return null
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: '导出 TVBox 数据',
+      defaultPath: join(app.getPath('downloads'), `TVBox Desktop 数据-${dateStamp()}.zip`),
+      filters: [{ name: 'TVBox 数据包', extensions: ['zip'] }]
+    })
+    if (result.canceled || !result.filePath) return null
+    return exportDataBundle(result.filePath)
+  })
+
+  ipcMain.handle(IPC.dataImport, async () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return null
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: '导入 TVBox 数据',
+      filters: [{ name: 'TVBox 数据包', extensions: ['zip'] }],
+      properties: ['openFile']
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+
+    const imported = await importDataBundle(result.filePaths[0])
+    resetHydrate()
+    clearLiveCache()
+    clearCategoryCache()
+    clearHomeCache()
+    await hydrate()
+    return imported
+  })
 
   // 配置源一变，直播频道缓存和分类树缓存就作废：否则换完订阅再进「电视直播」
   // 或「分类浏览」还会看到上一个源的分组 / 分类。
