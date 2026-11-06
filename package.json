@@ -1,7 +1,7 @@
 {
   "name": "tvbox-desktop",
   "version": "0.1.0",
-  "description": "TVBox Desktop - 纯白极简的 Windows 影视聚合客户端",
+  "description": "TVBox Desktop - 纯白极简的跨平台桌面影视聚合客户端",
   "main": "./out/main/index.js",
   "license": "MIT",
   "private": true,
@@ -15,7 +15,9 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
-    "build:win": "electron-vite build && electron-builder --win"
+    "build:win": "electron-vite build && electron-builder --win",
+    "build:mac:arm64": "node scripts/make-icon.mjs && electron-vite build && electron-builder --mac dmg zip --arm64",
+    "build:mac": "npm run build:mac:arm64"
   },
   "dependencies": {
     "artplayer": "^5.4.0",
