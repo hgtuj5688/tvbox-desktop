@@ -5,6 +5,8 @@ export const IPC = {
 
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
+  dataExport: 'data:export',
+  dataImport: 'data:import',
 
   sourcesList: 'sources:list',
   sourcesAdd: 'sources:add',

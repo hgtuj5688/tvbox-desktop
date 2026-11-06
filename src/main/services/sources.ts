@@ -37,6 +37,12 @@ export async function hydrate(): Promise<void> {
   }
 }
 
+/** 导入外部数据后让下一次 hydrate 重新从磁盘构建配置缓存。 */
+export function resetHydrate(): void {
+  parsedCache.clear()
+  hydrated = false
+}
+
 export function getParsed(sourceId: string): ParsedConfig | undefined {
   return parsedCache.get(sourceId)
 }

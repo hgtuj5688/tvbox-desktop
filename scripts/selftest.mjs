@@ -12,9 +12,11 @@
  *
  * 依赖：samples/selftest-config.json
  */
+import { fileURLToPath } from 'node:url'
 import { createStub, listen, state, BASE, MEDIA, MEDIA_2, DEAD_MEDIA, POSTER_1, POSTER_2 } from './stub-server.mjs'
 
 const DETAIL_URL = `${BASE}/detail/1`
+const SELFTEST_CONFIG = fileURLToPath(new URL('../samples/selftest-config.json', import.meta.url))
 
 const CDP = 'http://127.0.0.1:9222'
 
@@ -174,7 +176,7 @@ for (const sid of JSON.parse(await evalJs('window.api.sources.list().then(l => J
   await evalJs(`window.api.sources.remove(${JSON.stringify(sid)})`)
 }
 const added = await evalJs(
-  `window.api.sources.add({ name: '本地自检', url: ${JSON.stringify(new URL('../samples/selftest-config.json', import.meta.url).pathname.slice(1))}, kind: 'file' }).then(s => JSON.stringify(s))`
+  `window.api.sources.add({ name: '本地自检', url: ${JSON.stringify(SELFTEST_CONFIG)}, kind: 'file' }).then(s => JSON.stringify(s))`
 )
 const sourceId = JSON.parse(added).id
 const synced = JSON.parse(
@@ -332,11 +334,15 @@ const players = JSON.parse(
   )
 )
 check('外部播放器探测返回数组', Array.isArray(players), true)
+const runtimeInfo = JSON.parse(await evalJs('window.api.info().then(i => JSON.stringify(i))'))
+const isWindows = String(runtimeInfo.platform ?? '').startsWith('win32')
 console.log(
   '      本机检测到的播放器：' +
     (Array.isArray(players) && players.length
       ? players.map((p) => `${p.name} @ ${p.path}`).join(' | ')
-      : '（没有 PotPlayer / mpv / VLC）')
+      : isWindows
+        ? '（没有 PotPlayer / mpv / VLC）'
+        : '（没有 IINA / mpv / VLC）')
 )
 
 await evalJs("location.hash = '#/search?wd=' + encodeURIComponent('自检')")
@@ -1108,9 +1114,11 @@ check(
   ),
   true
 )
+const localRuntimeInfo = JSON.parse(await evalJs('window.api.info().then(i => JSON.stringify(i))'))
+const localIsWindows = String(localRuntimeInfo.platform ?? '').startsWith('win32')
 check(
-  '检测出来的都是 exe',
-  localPlayers.every((p) => /\.exe$/i.test(p.path)),
+  '检测出来的播放器路径符合当前平台',
+  localPlayers.every((p) => (localIsWindows ? /\.exe$/i.test(p.path) : !/\.exe$/i.test(p.path))),
   true
 )
 // openInPlayer 先校验协议、再去找播放器，所以这条不会真的弹出播放器窗口
@@ -1119,8 +1127,23 @@ const badProtocol = await evalJs(
 )
 check('外部播放器不认的协议会被挡住', /不是受支持的协议/.test(badProtocol), true)
 
+check('数据导出 API 已暴露', await evalJs('typeof window.api.data?.exportBundle'), 'function')
+check('数据导入 API 已暴露', await evalJs('typeof window.api.data?.importBundle'), 'function')
+
 // 界面：设置页那块的按钮得在，点了之后得给出「找到 N 个」或「一个都没找到」
 await goto('#/settings', '设置')
+check(
+  '设置页有 Windows ↔ macOS 数据迁移区块',
+  await evalJs("[...document.querySelectorAll('.section-title')].some((e) => e.textContent?.trim() === '数据迁移')"),
+  true
+)
+check(
+  '设置页有导入导出按钮',
+  await evalJs(
+    "[...document.querySelectorAll('button')].map((b) => b.textContent?.trim()).filter(Boolean).filter((t) => /导出数据包|导入数据包/.test(t)).length"
+  ),
+  2
+)
 const playerDom = JSON.parse(
   await evalJs(
     `(() => {

@@ -417,6 +417,16 @@ export interface AppInfo {
   userData: string
 }
 
+/** Windows 与 macOS 之间迁移用户配置的 ZIP 数据包结果。 */
+export interface DataTransferResult {
+  path: string
+  files: string[]
+  bytes: number
+  /** 导入前的完整数据目录备份；导出时为空。 */
+  backupPath?: string
+  sourcePlatform?: string
+}
+
 export interface TestResult {
   ok: boolean
   ms: number
@@ -456,8 +466,11 @@ export interface SearchResponse {
 export interface PlayerInfo {
   name: string
   path: string
-  /** scan = 扫常见安装路径找到的；registry = 从系统文件关联里问出来的；manual = 设置里手填的 */
-  source?: 'scan' | 'registry' | 'manual'
+  /** app = macOS .app；binary = 可直接 spawn 的命令或 exe */
+  kind?: 'app' | 'binary'
+  bundleId?: string
+  /** scan = 扫描路径；registry = Windows 注册表；launch-services = macOS 系统索引；manual = 手填 */
+  source?: 'scan' | 'registry' | 'launch-services' | 'manual'
 }
 
 export interface SearchOptions {

@@ -3,15 +3,15 @@
 [![Release](https://img.shields.io/github/v/release/hgtuj5688/tvbox-desktop?label=%E4%B8%8B%E8%BD%BD&color=2563EB)](https://github.com/hgtuj5688/tvbox-desktop/releases/latest)
 [![License](https://img.shields.io/github/license/hgtuj5688/tvbox-desktop?color=16A34A)](LICENSE)
 
-纯白极简的 Windows 影视聚合客户端。吃安卓 TVBox 的配置订阅格式，用桌面端更好用的交互方式呈现。
+纯白极简的桌面影视聚合客户端。吃安卓 TVBox 的配置订阅格式，提供 Windows x64 与 macOS Apple Silicon arm64 原生版本。
 
 ![首页](shots/home.png)
 
 | | |
 |---|---|
 | **技术栈** | Electron 44 + React 19 + TypeScript 7 + Vite 7 + zustand，ArtPlayer + hls.js |
-| **形态** | 便携——配置与缓存都在程序同级的 `data\`，不写 C 盘用户目录 |
-| **验证** | `npm run selftest` 端到端 **177 项断言**全绿；`npm run typecheck` / `npm run build` 干净 |
+| **形态** | Windows 免安装包保留程序同级 `data\`；macOS 使用可写的系统 `userData`，不写入 `.app` |
+| **验证** | `npm run selftest` 端到端 **181 项断言**全绿；`npm run typecheck` / `npm run build` 干净 |
 | **进度** | M1 → M4 全部完成，另有若干轮用户反馈驱动的修补 |
 
 - 设计文档（功能范围 / JSON 格式规范 / 里程碑）：见 [`功能框架.txt`](功能框架.txt)
@@ -23,7 +23,9 @@
 
 ## 下载安装
 
-去 **[Releases](https://github.com/hgtuj5688/tvbox-desktop/releases/latest)** 下载，两个文件选一个：
+去 **[Releases](https://github.com/hgtuj5688/tvbox-desktop/releases/latest)** 下载对应平台的产物。
+
+### Windows x64
 
 | 文件 | 用途 |
 |---|---|
@@ -47,17 +49,26 @@
 
 > 内置订阅**只带源**。API Key、外部播放器路径、收藏与观看历史都留在你自己的 `data\` 里，不会跟着安装包发出去，也不会在别人机器上出现。
 
-> 程序**没有代码签名证书**，所以首次运行 Windows SmartScreen 会拦一下：点「更多信息」→「仍要运行」即可。这不是病毒提示，只是没买证书。
+> 当前仓库构建产物默认是开发/测试包，可能没有代码签名证书。Windows SmartScreen 或 macOS Gatekeeper 可能需要用户确认；正式发布需使用项目维护者的证书完成签名和公证。
 >
-> 卸载时 `data\` 会跟着安装目录一起删掉（收藏、观看历史、配置源都在那里）。想留着就先把它复制出来。
+> Windows 免安装版的 `data\` 与 macOS 的 `~/Library/Application Support/TVBox Desktop/` 都保存配置源、设置、收藏和观看历史。升级或卸载前可在「设置 → 数据迁移」导出 ZIP 备份。
+
+### macOS Apple Silicon
+
+| 文件 | 用途 |
+|---|---|
+| `TVBox Desktop-0.1.0-arm64.dmg` | **安装版（推荐）**。打开后将应用拖入 `Applications` |
+| `TVBox Desktop-0.1.0-arm64-mac.zip` | 便携分发包，解压后可直接运行 |
+
+macOS 版本是原生 `arm64`，不依赖 Rosetta。应用包放在 `/Applications` 或其他只读位置也可以运行，配置会写入系统用户数据目录，不会写入 `.app`。首次打开未签名包时，在 Finder 中右键应用选择「打开」并确认即可。
 
 ---
 
 ## 快速开始
 
 ```bash
-npm install          # 首次安装会自动补下载 Electron 二进制（走 npmmirror）
-npm run dev          # 启动开发窗口
+npm ci                # 从 package-lock.json 安装依赖
+npm run dev           # 启动开发窗口（Windows / macOS 均可）
 ```
 
 如果 Electron 二进制没下下来（国内直连 GitHub Releases 会失败），手动执行：
@@ -73,10 +84,11 @@ node node_modules/electron/install.js
 | --- | --- |
 | `npm run dev` | 启动开发窗口（渲染进程热更新） |
 | `npm run dev:debug` | 同上，另外打开 CDP 调试端口 9222 |
-| `npm run selftest` | 端到端自检：起本地桩服务器 + 驱动窗口，177 项断言 |
+| `npm run selftest` | 端到端自检：起本地桩服务器 + 驱动窗口，181 项断言 |
 | `npm run typecheck` | 主进程与渲染进程双工程类型检查 |
 | `npm run build` | 产出 `out/`（主进程 / preload / 渲染进程） |
-| `npm run build:win` | electron-builder 打包出 NSIS 安装包与免安装 zip |
+| `npm run build:win` / `npm run package:win` | electron-builder 打包 Windows x64 NSIS 安装包与免安装 zip |
+| `npm run build:mac:arm64` / `npm run build:mac` | 打包 macOS Apple Silicon arm64 DMG 与 zip |
 
 打包会先跑 `electron-vite build`，再由 electron-builder 把产物写到 `release/`：NSIS 安装包、免安装 zip、以及 `latest.yml`（增量更新元数据）。国内网络下要给 builder 自己的二进制也指个镜像，否则下载 nsis / 7zip 会卡住：
 
@@ -85,11 +97,15 @@ $env:ELECTRON_BUILDER_BINARIES_MIRROR="https://npmmirror.com/mirrors/electron-bu
 npm run build:win
 ```
 
+macOS arm64 构建不依赖 `.cmd` 启动脚本，直接运行 `npm run dev` 或 `npm run build:mac:arm64`。签名发布时，把 Apple Developer 证书放进 CI secret/钥匙串，并按 `docs/macos-arm64-migration/RELEASE.md` 配置 notarization；不要把证书或 API Key 写入仓库。
+
 应用图标是**代码生成**的，不依赖任何设计工具：改完配色或造型跑一次就会重新写出 `build/icon.png`（512×512）与多尺寸 `build/icon.ico`（16/24/32/48/64/128/256，直接内嵌 PNG）。electron-builder 会自动认 `build/` 下的这一对文件。
 
 ```bash
 node scripts/make-icon.mjs
 ```
+
+该脚本在 macOS 上还会生成 `build/icon.icns`，在 Windows/Linux 上只生成 PNG 与 ICO。
 
 
 ## 目录结构
@@ -102,8 +118,10 @@ src/
     siteLabels.ts      站点类型的中文名与色签
   main/              主进程
     index.ts           窗口创建、生命周期、IPC 处理器注册
+    platform/          数据路径、本地 file URL、运行时和外部播放器平台适配
     services/
       store.ts         JSON 落盘（内存缓存 + 防抖 + 临时文件改名）
+      dataMigration.ts Windows ↔ macOS ZIP 导出、校验、备份与回滚
       http.ts          统一网络层（UA / 超时 / GBK 自动解码 / header 通配规则）
       cms.ts           苹果CMS 地址构造与返回判定
       config.ts        配置 JSON 归一化（A 方言与 B 方言都能吃）
@@ -151,9 +169,18 @@ scripts/
   candidates.txt       探活用的候选清单（每行「名字 地址」）
   candidates3.txt      同上，第二批
 build/
-  icon.png / icon.ico  应用图标（由 scripts/make-icon.mjs 生成）
-electron-builder.yml   打包配置（NSIS + zip，产物落 release/）
+  icon.png / icon.ico / icon.icns  应用图标（由 scripts/make-icon.mjs 生成）
+electron-builder.yml   打包配置（Windows NSIS + zip、macOS DMG + zip）
+.github/workflows/      macOS arm64 与 Windows x64 构建检查
 ```
+
+## Windows ↔ macOS 数据迁移
+
+在旧电脑打开「设置 → 数据迁移 → 导出数据包」，把生成的 ZIP 复制到新电脑，再选择「导入数据包」。数据包包含配置源、站点开关、应用设置、收藏、观看历史、解析接口、线路体检记录和预置配置；不包含 Electron session、Cookie、临时缓存或日志。
+
+导入前会自动备份当前数据目录，并校验 manifest、文件白名单、JSON 格式和 SHA-256。Windows 导入 macOS 时，旧的 `.exe` 播放器路径会被清空并恢复为 macOS 的 IINA → mpv → VLC 探测顺序；本地文件的绝对路径不会被擅自改写，需要在新电脑上重新选择不存在的文件。
+
+数据包可能包含设置里的 API Key，请只通过可信介质传输并妥善保管。备份位置会在导入结果中保留，发生异常时程序会自动回滚。
 
 ## 配置 JSON 怎么写
 
@@ -221,7 +248,7 @@ npm run dev:debug
 npm run selftest
 ```
 
-自检会验证十三块共 177 项断言：六个路由渲染、配置解析、站点类型归一化、CMS 与网页规则站的连通性测试（含失败路径）、自定义请求头透传、界面渲染、搜索 → 详情 → 选集 → 播放器全链路（含同名合并、解说过滤、详情页选片源、播放页换片源与可点地址框）、分类浏览（大类 → 子分类归并、记录片/短剧/动画片的归位、伦理片整棵子树被丢掉、叶子 id 展开、滚到底接上下一页、翻页后开头几张卡的位置不变）、电视直播（m3u 与 txt 两种格式、跨源同名合并成多线路、内置自定义频道始终在、分组名去装饰符、房间号必须是纯数字、线路体检按地址记结果、能拉起来的标成可用、404 的标成不可用并写清原因、体检结果会落盘、整组都是死链的频道默认被藏起来、顶部给出「显示 N 个不可用」开关、点开后能看到被藏起来的频道并标成不可用、清空体检表）、收藏与观看历史（含同一部剧在两个源上合并成一条、行上给出可切换的源）、AI 剧情总结（区块位置、「点了才开始」文案、主动作是看片而不是纯文本推断、按有没有 Key 分支断言按钮状态与抽帧提示）、解析接口（配置里带的会出现在列表里、直链原样返回不白跑、分享页里的地址自己读得出来、兜底时会往下轮询而不是只问一条、只剩坏接口时如实报失败且坏接口确实被问过、失败过的沉到后面下次直接用成功过的、战绩分开记不互相污染、跑完不留自检用的接口）、首页内容位（走的是 `tvboxDesktop.home.sections` 这个命名空间、按 key 与按中文名都找得到源、指定分类就按分类拉、写错的源只让那一行报错）、外部播放器（检测返回的数组形状、不认的协议被挡在解析之前、设置页的检测按钮点了会出结果），以及页面无 JS 异常。
+自检会验证十三块共 181 项断言：六个路由渲染、配置解析、站点类型归一化、CMS 与网页规则站的连通性测试（含失败路径）、自定义请求头透传、界面渲染、搜索 → 详情 → 选集 → 播放器全链路（含同名合并、解说过滤、详情页选片源、播放页换片源与可点地址框）、分类浏览（大类 → 子分类归并、记录片/短剧/动画片的归位、伦理片整棵子树被丢掉、叶子 id 展开、滚到底接上下一页、翻页后开头几张卡的位置不变）、电视直播（m3u 与 txt 两种格式、跨源同名合并成多线路、内置自定义频道始终在、分组名去装饰符、房间号必须是纯数字、线路体检按地址记结果、能拉起来的标成可用、404 的标成不可用并写清原因、体检结果会落盘、整组都是死链的频道默认被藏起来、顶部给出「显示 N 个不可用」开关、点开后能看到被藏起来的频道并标成不可用、清空体检表）、收藏与观看历史（含同一部剧在两个源上合并成一条、行上给出可切换的源）、AI 剧情总结（区块位置、「点了才开始」文案、主动作是看片而不是纯文本推断、按有没有 Key 分支断言按钮状态与抽帧提示）、解析接口（配置里带的会出现在列表里、直链原样返回不白跑、分享页里的地址自己读得出来、兜底时会往下轮询而不是只问一条、只剩坏接口时如实报失败且坏接口确实被问过、失败过的沉到后面下次直接用成功过的、战绩分开记不互相污染、跑完不留自检用的接口）、首页内容位（走的是 `tvboxDesktop.home.sections` 这个命名空间、按 key 与按中文名都找得到源、指定分类就按分类拉、写错的源只让那一行报错）、外部播放器与数据迁移入口（检测返回的数组形状、不认的协议被挡在解析之前、设置页的播放器检测和 Windows ↔ macOS 数据迁移按钮都可见），以及页面无 JS 异常。
 
 > `[9/13]` 段要把收藏与历史清干净才对得上数目，所以脚本**开头先备份、末尾再还原**你真实的收藏与观看记录。内容和排序都保住，但 `updatedAt` 会被刷新（`recordHistory` 一定会盖 `Date.now()`），因此还原后这些记录都显示「刚刚」。
 
@@ -380,9 +407,9 @@ danking直播,huya://10188
 
 ## 系统代理
 
-界面里的海报和视频走 Chromium，而主进程的请求走 Node —— **两者对系统代理的处理不一样**：Chromium 会老老实实听 Windows 的代理设置，Node 的 `fetch` 根本不读它。
+界面里的海报和视频走 Chromium，而主进程的请求走 Node —— **两者对系统代理的处理不一样**：Chromium 会读取 Windows/macOS 的系统代理设置，Node 的 `fetch` 根本不读它。
 
-所以当 Windows 的系统代理开着、指向的代理软件却没在跑时（Clash 之类的内核退了，`ProxyEnable` 还留在 1），会出现一种很像播放器坏了的现象：
+所以当系统代理开着、指向的代理软件却没在跑时（例如 Clash 内核退出但系统代理仍保留），会出现一种很像播放器坏了的现象：
 
 - 搜索、详情、分类、直播分组**全都正常**（走主进程）；
 - 但界面里**所有**图片和视频都黑，控制台一片 `net::ERR_PROXY_CONNECTION_FAILED`。
@@ -404,13 +431,14 @@ node scripts/apply-sources.mjs samples/public-sources.json 庆余年   # 推进�
 
 ## 数据目录
 
-配置、站点覆盖、设置以及浏览器缓存都放在**程序同级的 `data\` 目录**，不写 C 盘用户目录：
+配置、站点覆盖、设置以及浏览器缓存会按平台写到可写目录，不会写入 macOS `.app`：
 
 | 场景 | 位置 |
 | --- | --- |
-| 开发 | `D:\tvbox\data\` |
-| 打包后 | `<exe 所在目录>\data\` |
-| 浏览器缓存 | `data\session\` |
+| Windows 开发 | 项目根目录 `data\` |
+| Windows 打包后 | `<exe 所在目录>\data\` |
+| macOS 开发/打包 | `app.getPath('userData')` 对应的用户数据目录 |
+| 浏览器缓存 | 各平台数据目录下的 `session/` |
 
 ```
 data/
@@ -420,7 +448,7 @@ data/
   session/         Chromium 缓存
 ```
 
-如果这个位置建不出来（比如装到了只读目录），会自动退回系统默认的 `%APPDATA%\tvbox-desktop\` 并在控制台提示。第一次切过来时会把旧目录里已有的 `settings/sources/sites.json` 拷过来，配置不会丢。
+如果 Windows 便携目录建不出来，会自动退回系统默认用户目录并在控制台提示；macOS 默认直接使用用户数据目录。切换数据根目录时会尝试迁移旧的 settings/sources/sites 等 JSON，配置不会静默丢失。
 
 ## 结果合并与换源
 
@@ -436,9 +464,9 @@ data/
 - **没有直链线路时就现场解析**：如果这条线路给的是网页地址，播放器不会直接把网页丢进去，而是先让主进程按上面「解析接口」那三步换出真地址，换的过程中播放器上盖一层「正在换播放地址…」，换完在播放器下面写明是**靠哪条路**换出来的（「直接从播放页里取」还是某条解析接口，以及耗时）。万一所有线路都是网页地址且解析失败，错误会连每条路子的失败原因一起列出来。
 - **播放页直接换片源**：播放页侧栏顶部有「片源」区块，列出这部片子在各个站点的条目（当前这条打勾高亮），点一下就换过去继续看。从别的源切过去时链接只带 `/0/0`，播放页会自动跳到该源里能直接播的那条线路。没走过搜索就直接打开播放页（比如刷新后）时列表是空的，点「找其它片源」会按片名现搜一次。
 - **播放地址是个可点的小方框**：播放器下方的地址整块可点，点了用系统默认浏览器打开这个地址；想直接拷走用右边的「复制地址」。
-- 内嵌播放器是 ArtPlayer + hls.js。浏览器放不了的格式，点「外部播放器」就会唤起本机 PotPlayer / mpv / VLC。
-- **设置页能一键检测本机播放器**：点「检测本机播放器」会扫一遍 PotPlayer / mpv / VLC / MPC-HC / MPC-BE / KMPlayer / SMPlayer 的常见安装路径（含 `PATH`），还会问一下注册表里 `.mkv` / `.mp4` / `.ts` / `.flv` 的默认打开方式——绿色版或者装在奇怪目录里的播放器扫不到，但多半被设成了系统默认。结果里每条都带一个「用这个」按钮，点一下就把路径填进上面的输入框；已经生效的那条直接打「已选」。浏览器（Edge / Chrome / 夸克这类）会被过滤掉，不会出现在列表里。
-- 手动填的那条**一定会出现在检测结果里**（标「设置里指定的」），否则会出现「一个都没找到」但上面明明配着一个能用的播放器这种别扭局面。留空时按 PotPlayer → mpv → VLC 的顺序自动找。
+- 内嵌播放器是 ArtPlayer + hls.js。浏览器放不了的格式，点「外部播放器」就会唤起本机播放器；Windows 默认优先 PotPlayer / mpv / VLC，macOS 默认优先 IINA / mpv / VLC。
+- **设置页能一键检测本机播放器**：Windows 扫常见安装路径、`PATH` 和注册表默认打开方式；macOS 扫 `/Applications`、`~/Applications`、`PATH` 和 Launch Services 中的 IINA / mpv / VLC。结果里每条都带一个「用这个」按钮，点一下就把路径填进上面的输入框；浏览器等非播放器应用会被过滤。
+- 手动填的那条**一定会出现在检测结果里**（标「设置里指定的」）；留空时按当前平台的默认优先级自动找。macOS 可填写 `.app` 或命令行播放器路径。
 - 参数模板里 `{url}` 是播放地址、`{title}` 是片名，多个参数用空格分隔，例如 `--fullscreen {url}`。
 
 ## 解析接口
@@ -465,7 +493,7 @@ data/
 - 只支持桌面端能跑的站点类型：苹果CMS（type 3/4）与网页规则站（type 1）。安卓那套需要 jar/dex 的 spider（type 0）跑不了，会灰显并写明原因。
 - 解析接口只做 HTTP 解析（`type=1/2`）。`type=0` 的浏览器嗅探还没做。
 - 首页内容位只按「最近更新」或指定分类拉一页（每行最多 24 条），没有「换一批」；配置里也只能写 `site` / `typeId`，不支持写 `filters`。
-- 外部播放器检测是**扫路径 + 问注册表**，不是遍历全盘。装在 `D:\某处\` 这种自定义目录的播放器扫不到，得手填一次；手填之后它会一直出现在检测结果里。
+- 外部播放器检测是**平台适配器扫描**，不是遍历全盘。Windows 自定义目录和 macOS 非标准目录的播放器扫不到时，得手填一次；手填之后它会一直出现在检测结果里。
 - 这台开发机上 `raw.githubusercontent.com` 不可达，从公开聚合配置里批量抽接口的路子走不通，只能用 `probe-apis.mjs` 逐个探活。
 
 ---

@@ -2,8 +2,10 @@
 // 造型与界面左上角 logo 一致：蓝色渐变圆角方块 + 白色圆角播放三角。
 // 不依赖任何外部库，PNG 用 zlib 自己编，ICO 直接内嵌 PNG。
 import { deflateSync } from 'node:zlib'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -201,3 +203,41 @@ sizes.forEach((s, i) => {
 const ico = Buffer.concat([header, entries, ...blobs])
 writeFileSync(join(build, 'icon.ico'), ico)
 console.log(`wrote ${join(build, 'icon.ico')}  ${ico.length} bytes  (${sizes.join('/')})`)
+
+// ---------- macOS ICNS ----------
+
+/**
+ * iconutil 只能读取带标准命名的 .iconset 目录；所有源图都由上面的同一套几何
+ * 重新渲染，避免在不同机器上依赖设计工具或手工导出的二进制资源。
+ */
+function makeIcns() {
+  if (process.platform !== 'darwin') {
+    console.log('skip icon.icns: iconutil is only available on macOS')
+    return
+  }
+
+  const temp = mkdtempSync(join(tmpdir(), 'tvbox-icon-'))
+  const iconset = `${temp}.iconset`
+  renameSync(temp, iconset)
+  try {
+    const variants = [
+      [16, 'icon_16x16'],
+      [32, 'icon_32x32'],
+      [128, 'icon_128x128'],
+      [256, 'icon_256x256'],
+      [512, 'icon_512x512']
+    ]
+    for (const [size, name] of variants) {
+      writeFileSync(join(iconset, `${name}.png`), encodePng(size, render(size)))
+      writeFileSync(join(iconset, `${name}@2x.png`), encodePng(size * 2, render(size * 2)))
+    }
+    execFileSync('/usr/bin/iconutil', ['-c', 'icns', iconset, '-o', join(build, 'icon.icns')], {
+      stdio: 'inherit'
+    })
+    console.log(`wrote ${join(build, 'icon.icns')}`)
+  } finally {
+    rmSync(iconset, { recursive: true, force: true })
+  }
+}
+
+makeIcns()

@@ -1,0 +1,103 @@
+name: desktop-build
+
+on:
+  push:
+    branches: [main, codex/macos-arm64-migration]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  macos-arm64:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build application
+        run: npm run build
+
+      - name: Launch app for selftest
+        shell: bash
+        run: |
+          npm run dev:debug > "$RUNNER_TEMP/tvbox-dev.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/tvbox-dev.pid"
+          for attempt in {1..60}; do
+            if curl --silent --fail http://127.0.0.1:9222/json >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/tvbox-dev.log"
+          exit 1
+
+      - name: End-to-end selftest
+        run: npm run selftest
+
+      - name: Stop development app
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/tvbox-dev.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/tvbox-dev.pid")" 2>/dev/null || true
+          fi
+
+      - name: Package unsigned arm64 artifacts
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run build:mac:arm64
+
+      - name: Write checksums
+        shell: bash
+        run: shasum -a 256 release/* > release/SHA256SUMS.txt
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tvbox-macos-arm64
+          path: release/
+
+  windows-x64:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build application
+        run: npm run build
+
+      - name: Package Windows x64 artifacts
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run build:win
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tvbox-windows-x64
+          path: release/

@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from 'electron'
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { copyFileSync, cpSync, existsSync, mkdirSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { IPC } from '@shared/ipc'
 import type { AiFrame, AiSummaryInput, AppInfo, FavoriteItem, HistoryItem, SearchOptions, SearchResponse } from '@shared/types'
 import { getVodDetail } from './services/detail'
@@ -34,26 +34,39 @@ import { cancelSearch, searchAll } from './services/search'
 import { DEFAULT_SETTINGS, getSettings, saveSettings } from './services/settings'
 import { getSites, setSiteEnabled, setSitesEnabled, testSite } from './services/sites'
 import { addPreset, ensureBundledSources, listPresets } from './services/presets'
+import { exportDataBundle, importDataBundle } from './services/dataMigration'
 import {
   addSource,
   hydrate,
   listSources,
   removeSource,
+  resetHydrate,
   syncAll,
   syncSource,
   updateSource
 } from './services/sources'
-import { flushStore } from './services/store'
+import { flushStore, STORE_NAMES } from './services/store'
+import { resolveDataDir, resolveSessionDir } from './platform/paths'
+import { configureApplicationIdentity, describeRuntime } from './platform/runtime'
 
-// ── 数据目录：跟着程序走，不写 C 盘用户目录 ────────────────────────────────
-// 开发时是项目根下的 data/；打包后是 exe 同级的 data/（免安装便携形态）。
+// ── 数据目录 ────────────────────────────────────────────────────────────────
+// 开发时默认使用项目根 data/；Windows 打包版保留 exe 同级的便携目录；
+// macOS 打包版使用系统 userData，绝不能把运行期数据写进 .app 包。
 // 必须在 app ready 之前调用，否则 Chromium 已经把缓存写进默认的 userData 了。
-const DATA_DIR = join(app.isPackaged ? dirname(app.getPath('exe')) : app.getAppPath(), 'data')
+const DATA_DIR = resolveDataDir({
+  platform: process.platform,
+  isPackaged: app.isPackaged,
+  appPath: app.getAppPath(),
+  executablePath: app.getPath('exe'),
+  userDataPath: app.getPath('userData'),
+  overridePath: process.env['TVBOX_DATA_DIR']
+})
+const SESSION_DIR = resolveSessionDir(DATA_DIR)
 
 /** 把老版本留在默认 userData 里的 store 文件搬过来，避免升级后配置丢失 */
 function migrateLegacyData(legacy: string): void {
-  if (legacy === DATA_DIR) return
-  for (const name of ['settings', 'sources', 'sites']) {
+  if (resolve(legacy) === resolve(DATA_DIR)) return
+  for (const name of STORE_NAMES) {
     const from = join(legacy, `${name}.json`)
     const to = join(DATA_DIR, `${name}.json`)
     if (existsSync(to) || !existsSync(from)) continue
@@ -63,15 +76,26 @@ function migrateLegacyData(legacy: string): void {
       // 搬不动就算了，用默认值重建
     }
   }
+
+  const oldPresets = join(legacy, 'presets')
+  const newPresets = join(DATA_DIR, 'presets')
+  if (existsSync(oldPresets) && !existsSync(newPresets)) {
+    try {
+      cpSync(oldPresets, newPresets, { recursive: true })
+    } catch {
+      // 预置文件搬不动不应阻止应用启动，后续可从设置页重新添加
+    }
+  }
 }
 
 function redirectUserData(): void {
   const legacy = app.getPath('userData')
   try {
     mkdirSync(DATA_DIR, { recursive: true })
+    mkdirSync(SESSION_DIR, { recursive: true })
     app.setPath('userData', DATA_DIR)
     // 缓存单独放一层，让 data/ 根目录只剩我们自己的几个 json
-    app.setPath('sessionData', join(DATA_DIR, 'session'))
+    app.setPath('sessionData', SESSION_DIR)
   } catch (err) {
     // 建不出来（比如装到了只读位置）就退回默认目录，至少保证程序能启动
     console.error('[data] 无法切到便携数据目录，继续用默认目录：', err)
@@ -83,6 +107,10 @@ function redirectUserData(): void {
 redirectUserData()
 
 let mainWindow: BrowserWindow | null = null
+
+function dateStamp(): string {
+  return new Date().toISOString().slice(0, 10).replace(/-/g, '')
+}
 
 async function createWindow(): Promise<void> {
   const saved = (await getSettings()).window
@@ -135,12 +163,13 @@ async function createWindow(): Promise<void> {
 
 function registerIpc(): void {
   ipcMain.handle(IPC.appInfo, (): AppInfo => {
+    const runtime = describeRuntime()
     return {
       version: app.getVersion(),
       electron: process.versions.electron,
       chrome: process.versions.chrome,
       node: process.versions.node,
-      platform: `${process.platform} ${process.arch}`,
+      platform: `${runtime.platform} ${runtime.arch}`,
       userData: app.getPath('userData')
     }
   })
@@ -152,6 +181,35 @@ function registerIpc(): void {
 
   ipcMain.handle(IPC.settingsGet, () => getSettings())
   ipcMain.handle(IPC.settingsSet, (_e, patch) => saveSettings(patch))
+
+  ipcMain.handle(IPC.dataExport, async () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return null
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: '导出 TVBox 数据',
+      defaultPath: join(app.getPath('downloads'), `TVBox Desktop 数据-${dateStamp()}.zip`),
+      filters: [{ name: 'TVBox 数据包', extensions: ['zip'] }]
+    })
+    if (result.canceled || !result.filePath) return null
+    return exportDataBundle(result.filePath)
+  })
+
+  ipcMain.handle(IPC.dataImport, async () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return null
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: '导入 TVBox 数据',
+      filters: [{ name: 'TVBox 数据包', extensions: ['zip'] }],
+      properties: ['openFile']
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+
+    const imported = await importDataBundle(result.filePaths[0])
+    resetHydrate()
+    clearLiveCache()
+    clearCategoryCache()
+    clearHomeCache()
+    await hydrate()
+    return imported
+  })
 
   // 配置源一变，直播频道缓存和分类树缓存就作废：否则换完订阅再进「电视直播」
   // 或「分类浏览」还会看到上一个源的分组 / 分类。
@@ -281,7 +339,7 @@ function registerIpc(): void {
 }
 
 void app.whenReady().then(async () => {
-  app.setAppUserModelId('com.tvbox.desktop')
+  configureApplicationIdentity((id) => app.setAppUserModelId(id))
 
   // 必须在建窗口之前跑完：系统代理指向一个没在监听的端口时（代理软件退出了、
   // Windows 的代理开关还留着），Chromium 的每个请求都会 ERR_PROXY_CONNECTION_FAILED，

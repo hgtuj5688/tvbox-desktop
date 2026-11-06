@@ -29,6 +29,18 @@ nsis:
   shortcutName: TVBox Desktop
   deleteAppDataOnUninstall: false
 
+# macOS Apple Silicon 目标：DMG 安装包 + zip 分发包
+mac:
+  target:
+    - target: dmg
+      arch: [arm64]
+    - target: zip
+      arch: [arm64]
+  category: public.app-category.entertainment
+  icon: build/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
+
 # 国内网络下 builder 需要下载 nsis / winCodeSign 等二进制，走镜像
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
