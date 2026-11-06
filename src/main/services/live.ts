@@ -4,6 +4,7 @@ import { isHttpUrl } from '@shared/liveUrl'
 import { getSettings } from './settings'
 import { fetchText } from './http'
 import { getParsed, listSources } from './sources'
+import { localPathFromUrl } from '../platform/fileUrls'
 
 /**
  * 电视直播源的解析。
@@ -135,9 +136,8 @@ export function parseLiveContent(text: string): RawChannel[] {
 
 async function readSource(source: { url: string }, timeout: number): Promise<string> {
   if (isHttpUrl(source.url)) return fetchText(source.url, { timeout })
-  // 本地文件：支持 file:/// 与 Windows 盘符路径
-  const path = source.url.replace(/^file:\/\/\/?/i, '')
-  return readFile(decodeURIComponent(path), 'utf8')
+  // 本地文件：统一处理 file:// URL、中文、空格、macOS 路径和 Windows 盘符路径
+  return readFile(localPathFromUrl(source.url), 'utf8')
 }
 
 /** 合并同一频道的多条线路：同名频道收成一张卡，卡上列出来自哪些源 */

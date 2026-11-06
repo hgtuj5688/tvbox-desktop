@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from 'electron'
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { copyFileSync, cpSync, existsSync, mkdirSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { IPC } from '@shared/ipc'
 import type { AiFrame, AiSummaryInput, AppInfo, FavoriteItem, HistoryItem, SearchOptions, SearchResponse } from '@shared/types'
 import { getVodDetail } from './services/detail'
@@ -44,16 +44,38 @@ import {
   updateSource
 } from './services/sources'
 import { flushStore } from './services/store'
+import { resolveDataDir, resolveSessionDir } from './platform/paths'
 
-// ── 数据目录：跟着程序走，不写 C 盘用户目录 ────────────────────────────────
-// 开发时是项目根下的 data/；打包后是 exe 同级的 data/（免安装便携形态）。
+// ── 数据目录 ────────────────────────────────────────────────────────────────
+// 开发时默认使用项目根 data/；Windows 打包版保留 exe 同级的便携目录；
+// macOS 打包版使用系统 userData，绝不能把运行期数据写进 .app 包。
 // 必须在 app ready 之前调用，否则 Chromium 已经把缓存写进默认的 userData 了。
-const DATA_DIR = join(app.isPackaged ? dirname(app.getPath('exe')) : app.getAppPath(), 'data')
+const DATA_DIR = resolveDataDir({
+  platform: process.platform,
+  isPackaged: app.isPackaged,
+  appPath: app.getAppPath(),
+  executablePath: app.getPath('exe'),
+  userDataPath: app.getPath('userData'),
+  overridePath: process.env['TVBOX_DATA_DIR']
+})
+const SESSION_DIR = resolveSessionDir(DATA_DIR)
+
+const STORE_FILES = [
+  'settings',
+  'sources',
+  'sites',
+  'favorites',
+  'history',
+  'parse-stats',
+  'parses',
+  'live-health',
+  'bundled-sources'
+]
 
 /** 把老版本留在默认 userData 里的 store 文件搬过来，避免升级后配置丢失 */
 function migrateLegacyData(legacy: string): void {
-  if (legacy === DATA_DIR) return
-  for (const name of ['settings', 'sources', 'sites']) {
+  if (resolve(legacy) === resolve(DATA_DIR)) return
+  for (const name of STORE_FILES) {
     const from = join(legacy, `${name}.json`)
     const to = join(DATA_DIR, `${name}.json`)
     if (existsSync(to) || !existsSync(from)) continue
@@ -63,15 +85,26 @@ function migrateLegacyData(legacy: string): void {
       // 搬不动就算了，用默认值重建
     }
   }
+
+  const oldPresets = join(legacy, 'presets')
+  const newPresets = join(DATA_DIR, 'presets')
+  if (existsSync(oldPresets) && !existsSync(newPresets)) {
+    try {
+      cpSync(oldPresets, newPresets, { recursive: true })
+    } catch {
+      // 预置文件搬不动不应阻止应用启动，后续可从设置页重新添加
+    }
+  }
 }
 
 function redirectUserData(): void {
   const legacy = app.getPath('userData')
   try {
     mkdirSync(DATA_DIR, { recursive: true })
+    mkdirSync(SESSION_DIR, { recursive: true })
     app.setPath('userData', DATA_DIR)
     // 缓存单独放一层，让 data/ 根目录只剩我们自己的几个 json
-    app.setPath('sessionData', join(DATA_DIR, 'session'))
+    app.setPath('sessionData', SESSION_DIR)
   } catch (err) {
     // 建不出来（比如装到了只读位置）就退回默认目录，至少保证程序能启动
     console.error('[data] 无法切到便携数据目录，继续用默认目录：', err)

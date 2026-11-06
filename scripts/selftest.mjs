@@ -12,9 +12,11 @@
  *
  * 依赖：samples/selftest-config.json
  */
+import { fileURLToPath } from 'node:url'
 import { createStub, listen, state, BASE, MEDIA, MEDIA_2, DEAD_MEDIA, POSTER_1, POSTER_2 } from './stub-server.mjs'
 
 const DETAIL_URL = `${BASE}/detail/1`
+const SELFTEST_CONFIG = fileURLToPath(new URL('../samples/selftest-config.json', import.meta.url))
 
 const CDP = 'http://127.0.0.1:9222'
 
@@ -174,7 +176,7 @@ for (const sid of JSON.parse(await evalJs('window.api.sources.list().then(l => J
   await evalJs(`window.api.sources.remove(${JSON.stringify(sid)})`)
 }
 const added = await evalJs(
-  `window.api.sources.add({ name: '本地自检', url: ${JSON.stringify(new URL('../samples/selftest-config.json', import.meta.url).pathname.slice(1))}, kind: 'file' }).then(s => JSON.stringify(s))`
+  `window.api.sources.add({ name: '本地自检', url: ${JSON.stringify(SELFTEST_CONFIG)}, kind: 'file' }).then(s => JSON.stringify(s))`
 )
 const sourceId = JSON.parse(added).id
 const synced = JSON.parse(
