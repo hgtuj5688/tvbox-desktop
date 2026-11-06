@@ -334,11 +334,15 @@ const players = JSON.parse(
   )
 )
 check('外部播放器探测返回数组', Array.isArray(players), true)
+const runtimeInfo = JSON.parse(await evalJs('window.api.info().then(i => JSON.stringify(i))'))
+const isWindows = String(runtimeInfo.platform ?? '').startsWith('win32')
 console.log(
   '      本机检测到的播放器：' +
     (Array.isArray(players) && players.length
       ? players.map((p) => `${p.name} @ ${p.path}`).join(' | ')
-      : '（没有 PotPlayer / mpv / VLC）')
+      : isWindows
+        ? '（没有 PotPlayer / mpv / VLC）'
+        : '（没有 IINA / mpv / VLC）')
 )
 
 await evalJs("location.hash = '#/search?wd=' + encodeURIComponent('自检')")
@@ -1110,9 +1114,11 @@ check(
   ),
   true
 )
+const localRuntimeInfo = JSON.parse(await evalJs('window.api.info().then(i => JSON.stringify(i))'))
+const localIsWindows = String(localRuntimeInfo.platform ?? '').startsWith('win32')
 check(
-  '检测出来的都是 exe',
-  localPlayers.every((p) => /\.exe$/i.test(p.path)),
+  '检测出来的播放器路径符合当前平台',
+  localPlayers.every((p) => (localIsWindows ? /\.exe$/i.test(p.path) : !/\.exe$/i.test(p.path))),
   true
 )
 // openInPlayer 先校验协议、再去找播放器，所以这条不会真的弹出播放器窗口

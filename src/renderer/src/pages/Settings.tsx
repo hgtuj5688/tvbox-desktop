@@ -259,7 +259,7 @@ export function Settings(): JSX.Element {
         </section>
 
         <ParseSettingsSection />
-        {settings ? <GeneralSettings settings={settings} onPatch={updateSettings} /> : null}
+        {settings ? <GeneralSettings settings={settings} onPatch={updateSettings} platform={info?.platform} /> : null}
         {settings ? <AiSettingsSection settings={settings} onPatch={updateSettings} /> : null}
 
         <section className="section">
@@ -344,6 +344,7 @@ const JSON_SAMPLE = `{
 interface GeneralProps {
   settings: AppSettings
   onPatch: (patch: Partial<AppSettings>) => Promise<void>
+  platform?: string
 }
 
 /** 一条解析接口的战绩，写成人话 */
@@ -556,11 +557,13 @@ function ParseSettingsSection(): JSX.Element {
   )
 }
 
-function GeneralSettings({ settings, onPatch }: GeneralProps): JSX.Element {
+function GeneralSettings({ settings, onPatch, platform }: GeneralProps): JSX.Element {
   const [draft, setDraft] = useState<AppSettings>(settings)
   useEffect(() => setDraft(settings), [settings])
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings)
+  const isMac = platform?.startsWith('darwin') === true
+  const playerNames = isMac ? 'IINA / mpv / VLC' : 'PotPlayer / mpv / VLC'
 
   // 点「检测本机播放器」之前不主动扫，因为这个动作要摸一遍磁盘上的常见安装路径
   const [players, setPlayers] = useState<PlayerInfo[] | null>(null)
@@ -661,7 +664,7 @@ function GeneralSettings({ settings, onPatch }: GeneralProps): JSX.Element {
           <label>外部播放器命令</label>
           <input
             className="input"
-            placeholder="留空则自动探测 PotPlayer / mpv / VLC"
+            placeholder={`留空则自动探测 ${playerNames}`}
             value={draft.externalPlayer.command}
             onChange={(e) =>
               setDraft({ ...draft, externalPlayer: { ...draft.externalPlayer, command: e.target.value } })
@@ -684,12 +687,13 @@ function GeneralSettings({ settings, onPatch }: GeneralProps): JSX.Element {
                 <span className="fs-12 text-3">找到 {players.length} 个</span>
               ) : (
                 <span className="fs-12 text-3">
-                  一个都没找到（扫过 PotPlayer / mpv / VLC / MPC-HC / MPC-BE / KMPlayer / SMPlayer
-                  的常见安装路径，也问过 .mkv / .mp4 的默认打开方式），装在别处的话请直接填上面的路径
+                  {isMac
+                    ? `一个都没找到（扫描 /Applications、~/Applications、PATH 和系统应用索引中的 ${playerNames}），装在别处的话请直接填上面的路径`
+                    : '一个都没找到（扫过 PotPlayer / mpv / VLC / MPC-HC / MPC-BE / KMPlayer / SMPlayer 的常见安装路径，也问过 .mkv / .mp4 的默认打开方式），装在别处的话请直接填上面的路径'}
                 </span>
               )
             ) : (
-              <span className="fs-12 text-3">留空时按 PotPlayer → mpv → VLC 的顺序自动找</span>
+              <span className="fs-12 text-3">留空时按 {isMac ? 'IINA → mpv → VLC' : 'PotPlayer → mpv → VLC'} 的顺序自动找</span>
             )}
           </div>
         </div>
@@ -700,7 +704,7 @@ function GeneralSettings({ settings, onPatch }: GeneralProps): JSX.Element {
                 <div className="list-row-main">
                   <div className="list-row-title">
                     {p.name}
-                    {p.source === 'registry' ? (
+                    {p.source === 'registry' || p.source === 'launch-services' ? (
                       <span className="tag tag-outline">系统默认打开方式</span>
                     ) : null}
                   </div>
