@@ -38,6 +38,8 @@ mac:
       arch: [arm64]
   category: public.app-category.entertainment
   icon: build/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
 
 # 国内网络下 builder 需要下载 nsis / winCodeSign 等二进制，走镜像
 electronDownload:

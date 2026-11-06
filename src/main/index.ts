@@ -47,6 +47,7 @@ import {
 } from './services/sources'
 import { flushStore, STORE_NAMES } from './services/store'
 import { resolveDataDir, resolveSessionDir } from './platform/paths'
+import { configureApplicationIdentity, describeRuntime } from './platform/runtime'
 
 // ── 数据目录 ────────────────────────────────────────────────────────────────
 // 开发时默认使用项目根 data/；Windows 打包版保留 exe 同级的便携目录；
@@ -162,12 +163,13 @@ async function createWindow(): Promise<void> {
 
 function registerIpc(): void {
   ipcMain.handle(IPC.appInfo, (): AppInfo => {
+    const runtime = describeRuntime()
     return {
       version: app.getVersion(),
       electron: process.versions.electron,
       chrome: process.versions.chrome,
       node: process.versions.node,
-      platform: `${process.platform} ${process.arch}`,
+      platform: `${runtime.platform} ${runtime.arch}`,
       userData: app.getPath('userData')
     }
   })
@@ -337,7 +339,7 @@ function registerIpc(): void {
 }
 
 void app.whenReady().then(async () => {
-  app.setAppUserModelId('com.tvbox.desktop')
+  configureApplicationIdentity((id) => app.setAppUserModelId(id))
 
   // 必须在建窗口之前跑完：系统代理指向一个没在监听的端口时（代理软件退出了、
   // Windows 的代理开关还留着），Chromium 的每个请求都会 ERR_PROXY_CONNECTION_FAILED，

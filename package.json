@@ -9,6 +9,7 @@
     "dev": "electron-vite dev",
     "dev:debug": "electron-vite dev -- --remote-debugging-port=9222",
     "selftest": "node scripts/selftest.mjs",
+    "test:platform": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test scripts/platform-selftest.ts",
     "preview": "electron-vite preview",
     "build": "electron-vite build",
     "postinstall": "node scripts/ensure-electron.cjs",
@@ -16,6 +17,7 @@
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "build:win": "electron-vite build && electron-builder --win",
+    "package:win": "npm run build:win",
     "build:mac:arm64": "node scripts/make-icon.mjs && electron-vite build && electron-builder --mac dmg zip --arm64",
     "build:mac": "npm run build:mac:arm64"
   },

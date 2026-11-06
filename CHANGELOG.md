@@ -1,5 +1,13 @@
 # 更新日志
 
+## 未发布 — macOS Apple Silicon 迁移
+
+- 增加 macOS arm64 原生 DMG / ZIP 构建，运行数据改用 macOS `userData`，不写入 `.app`。
+- 增加 IINA、mpv、VLC 的 macOS 播放器探测与唤起，同时保留 Windows x64 播放器和注册表探测。
+- 增加 Windows ↔ macOS 数据包导出/导入：manifest、白名单、SHA-256、导入前备份、失败回滚和跨平台播放器路径清理。
+- 增加 macOS/Windows 构建 CI、arm64 产物检查、签名/公证发布说明与本地文件 URL 迁移说明。
+- 自检新增数据迁移 API / 设置入口断言，当前共 181 项。
+
 ## v0.1.0 — 首个完整版本
 
 从零搭到 M4 收尾。以下按**功能面**归纳，设计取舍与实测数字写在 [`功能框架.txt`](功能框架.txt)，用法写在 [`README.md`](README.md)。
@@ -49,14 +57,17 @@
 ### 打包与发布
 
 - **Windows 安装包**：electron-builder 出 NSIS 安装向导（`oneClick: false`，可改安装目录、建开始菜单与桌面快捷方式）与**免安装 zip**，产物落在 `release/`。
+- **macOS Apple Silicon**：`npm run build:mac:arm64` 生成原生 arm64 DMG、ZIP 与 `.app`，运行期数据写入用户数据目录。
+- **跨平台数据迁移**：设置页可导出/导入版本化 ZIP；导入会校验、备份并在失败时回滚，Windows 播放器路径不会直接带到 macOS 执行。
 - **应用图标是代码生成的**：`node scripts/make-icon.mjs` 零依赖自己编 PNG，写出 `build/icon.png`（512×512）与内嵌多尺寸的 `build/icon.ico`（16/24/32/48/64/128/256）。造型与界面左上角 logo 一致。
+- macOS 构建会额外生成 `build/icon.icns`；签名与公证需要发布环境提供 Developer ID 与 Apple notarization 凭据。
 - **安装包实测**：静默安装退出码 0、装出来的应用能正常启动并渲染界面、`data\` 落在程序同级、卸载退出码 0 并把安装目录与两个快捷方式都清干净。
 - ⚠️ 没有代码签名证书，首次运行会触发 SmartScreen 提示（点「更多信息」→「仍要运行」）。
 - **装完即用（带源）**：首启检测到「一个配置源都没有」就自动写入内置订阅 `public-cms`（5 个公开采集站 + 1 个直播源 + 5 条首页内容位）并立即同步一次，打开就是有内容的状态，不用自己去找订阅地址。用 `data/bundled-sources.json` 标志位保证只送一次：用户自己删光所有源之后重启不会又冒出来。**只带源不带设置**——实测打包后的 `app.asar` 与首启生成的 `settings.json` 里都没有使用者的 API Key、播放器路径、收藏与历史。
 
 ### 工程
 
-- **端到端自检**：`npm run selftest` 自己起本地桩服务器 + 用 CDP 驱动真实窗口，**177 项断言**覆盖十三个功能块。跑之前备份、跑完还原使用者真实的收藏与观看记录。
+- **端到端自检**：`npm run selftest` 自己起本地桩服务器 + 用 CDP 驱动真实窗口，**181 项断言**覆盖十三个功能块。跑之前备份、跑完还原使用者真实的收藏与观看记录。
 - **Windows 上的两个坑**：编辑器的原子写会在源码目录留下 `.tmpdir` 临时文件，chokidar 去 watch 它直接抛 `EBUSY` 把 dev server 打挂——配置里显式忽略；改源码只用编辑工具，**绝不用 PowerShell 做读写往返**（会把 UTF-8 编码搞坏）。
 - **截图脚本**：`node scripts/shot.mjs` 走 CDP 按路由截图；截图前注入 `animation:none!important;transition:none!important`，否则窗口不在前台时 `page-in` 入场动画会被冻在中途，看起来像「整体发白」的配色 bug。
 

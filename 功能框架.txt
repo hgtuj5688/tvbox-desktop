@@ -1,12 +1,12 @@
 ================================================================================
                     TVBox Desktop · 功能框架设计书
-        Windows 桌面影视聚合客户端 | 纯白极简 · 电脑宽屏 · 内容密集
+        Windows x64 / macOS arm64 桌面影视聚合客户端 | 纯白极简 · 电脑宽屏 · 内容密集
 ================================================================================
 文档版本 : v0.1
-目标平台 : Windows 10 / 11 (x64)
+目标平台 : Windows 10 / 11 (x64)；macOS Apple Silicon (arm64)
 技术形态 : Electron 桌面客户端
 编写日期 : 首版框架设计
-配套代码 : D:\tvbox
+配套代码 : 当前仓库根目录
 
 
 ================================================================================
@@ -14,7 +14,7 @@
 ================================================================================
 
 把安卓 TVBox 的「配置订阅 + 多站点聚合搜索 + 多线路选集播放」这套能力搬到
-Windows 电脑上，界面走纯白极简路线，但利用电脑宽屏优势把内容密度做高：
+Windows 与 macOS 桌面端，界面走纯白极简路线，但利用电脑宽屏优势把内容密度做高：
 一屏能看到足够多的海报、剧集和搜索结果，鼠标操作优先，键鼠快捷键齐备。
 
 
@@ -32,8 +32,8 @@ Windows 电脑上，界面走纯白极简路线，但利用电脑宽屏优势把
 流媒体      hls.js (Apache-2.0)     m3u8 / HLS 播放，兼容绝大多数采集站
 HTML解析    cheerio                 用于 type=1 的网页型站点兜底解析
 编码        iconv-lite              GBK/GB2312 直播源与网页转码
-本地存储    JSON 文件               放程序同级的 data\ 目录（便携），避免原生模块重编译
-打包        electron-builder        NSIS 安装包 + 免安装 zip
+本地存储    JSON 文件               Windows 便携 data\；macOS userData；避免原生模块重编译
+打包        electron-builder        Windows NSIS/zip + macOS arm64 DMG/zip
 
 设计原则
   1) 主进程负责一切网络请求与文件读写，渲染进程只管展示（安全 + 可绕过 CORS）
@@ -45,7 +45,7 @@ HTML解析    cheerio                 用于 type=1 的网页型站点兜底解�
 2. 目录结构
 ================================================================================
 
-D:\tvbox
+仓库根目录
 ├─ package.json
 ├─ electron.vite.config.ts
 ├─ tsconfig.json / tsconfig.node.json / tsconfig.web.json
@@ -1154,8 +1154,9 @@ https://play.xluuss.com/play/1aMj3L5b，播放器上出现
   · 设置里手填的那条**一定出现在结果里**（source='manual'，排在第一条），否则会出现
     「一个都没找到」但上面明明配着一个能用的播放器这种别扭局面。
 
-  PlayerInfo 因此多了个 source?: 'scan' | 'registry' | 'manual'，界面上
-  registry 的那条打「系统默认打开方式」标签。
+  PlayerInfo 因此多了个 source?: 'scan' | 'registry' | 'launch-services' | 'manual'，
+  界面上 registry / launch-services 的那条打「系统默认打开方式」标签。macOS
+  额外返回 kind='app' 或 kind='binary'，分别用 open -a 与 spawn 启动。
 
 7.12.2 界面
 
@@ -1178,8 +1179,9 @@ https://play.xluuss.com/play/1aMj3L5b，播放器上出现
 
 7.12.4 自检
 
-  [13/13] 段，6 条断言。**结果在每台机器上都不一样**（谁装了什么播放器就有什么），
-  所以只断言形状与兜底：返回的是数组、每一条都有名字和路径、都是 .exe、
+  [13/13] 段，当前包含播放器与数据迁移入口断言。**结果在每台机器上都不一样**
+  （谁装了什么播放器就有什么），所以只断言形状与兜底：返回的是数组、每一条都有名字和路径、
+  Windows 结果是 .exe，macOS 结果不是 .exe、
   `player.open('javascript:alert(1)')` 会被协议校验挡下（校验在找播放器之前，
   所以不会真弹出窗口）、设置页有那个按钮、点完会给出「找到 N 个」或「一个都没找到」
   而不是一直转圈。
@@ -1281,7 +1283,7 @@ https://play.xluuss.com/play/1aMj3L5b，播放器上出现
 
 7.13.9 自检
 
-  [8/13] 段新增 8 条（169 → 177）。桩服务器专门加了一个指向 /media/dead.m3u8 的
+  历史版本的 [8/13] 段曾新增 8 条（169 → 177）。桩服务器专门加了一个指向 /media/dead.m3u8 的
   「自检停播台」，那条路由故意不建、由兜底 404 接管。断言：体检表按地址记结果、
   能拉起来的标成 ok 且没有 error、404 的标成不可用且 error 正是「HTTP 404」、
   体检结果会落盘、切到「自检停播」分组后那张卡默认被藏起来、顶部给出
@@ -1292,13 +1294,13 @@ https://play.xluuss.com/play/1aMj3L5b，播放器上出现
 8. 本地存储
 ================================================================================
 
-位置：程序同级的 data\ 目录（便携形态，不写 C 盘用户目录）
+位置：Windows 便携版使用程序同级 data\；macOS 使用 Electron userData（不写入 .app）
 
-  开发时      D:\tvbox\data\
-  打包后      <exe 所在目录>\data\
-  浏览器缓存  data\session\（Chromium 的 Cache / Local Storage 等都在这层）
-  兜底        如果这个位置建不出来（例如装到了只读目录），自动退回系统默认的
-              %APPDATA%\tvbox-desktop\，并在控制台打印一行提示，保证程序还能起。
+  Windows 开发时      仓库根目录 data\
+  Windows 打包后      <exe 所在目录>\data\
+  macOS 开发/打包     app.getPath('userData') 对应的用户数据目录
+  浏览器缓存          各平台数据目录下的 session/（Chromium Cache / Local Storage）
+  Windows 兜底         如果便携目录建不出来，退回系统 userData 并在控制台提示。
 
   目录里存的文件：
 
@@ -1323,7 +1325,7 @@ settings/sources/sites.json 拷过来，升级不会丢配置。
   M2  聚合搜索 + 详情选集 + ArtPlayer 播放                    ← 已完成
   M3  直播 + 收藏/历史 + 继续观看                              ← 已完成
   M4  解析接口 + 外部播放器 + 首页内容位          ← 已完成
-  M5  electron-builder 打包（NSIS 安装包 + 免安装 zip）
+  M5  electron-builder 打包（Windows NSIS/zip + macOS arm64 DMG/zip）
 
 每个里程碑结束后可运行验证，再决定是否进入下一个。
 
@@ -1533,7 +1535,7 @@ M3 之后按用户反馈追加的三件事（都已完成）：
    （fanmingming 那条抽样 0% 可播、zbds-iptv4 是现有源的严格子集），**加源没用**，
    只能把已有线路用起来。用户拍板四件事：懒体检 + 分组预热、死频道默认隐藏、
    去掉 Gather.m3u、起播取最高档。做完后 14 个分组 541 个频道，
-   自检从 169 项扩到 **177 项**（[8] 段新增 8 条，桩里加了一个指向 404 的
+   历史记录中的自检从 169 项扩到 **177 项**（[8] 段新增 8 条，桩里加了一个指向 404 的
    「自检停播台」用来验「整组都是死链的频道被藏起来」）。
 
 
@@ -1617,7 +1619,8 @@ M3 之后按用户反馈追加的三件事（都已完成）：
   npm run selftest      端到端自检（需要 dev:debug 已经在跑）
   npm run typecheck     主进程 / 渲染进程双工程类型检查
   npm run build         产出 out/（主进程、preload、渲染进程三份）
-  npm run build:win     electron-builder 打包 NSIS 安装包与免安装 zip
+  npm run build:win             electron-builder 打包 Windows x64 NSIS 与 zip
+  npm run build:mac:arm64       electron-builder 打包 macOS arm64 DMG 与 zip
 
   开发辅助脚本（都在 scripts/ 下，只在开发时用）：
 
@@ -1653,7 +1656,7 @@ M3 之后按用户反馈追加的三件事（都已完成）：
 
 11.3 自检覆盖的内容
 
-  共 177 项断言，全绿才算通过。分十三段：
+  共 181 项断言，全绿才算通过。分十三段：
 
   [1] 六个路由都能渲染出标题
   [2] 添加本地配置源并同步（站点 / 直播 / 解析计数）
@@ -1779,6 +1782,56 @@ M3 之后按用户反馈追加的三件事（都已完成）：
   桩每页只给 2 条，一屏装不满，所以自动加载会紧接着把第 2 页也拉过来
   （pageCalls 变成 [1,1,2,2]），断言只检查头两次是第 1 页。
   桩把每次收到的 pg 与 t 记在 state.pageCalls / state.typeCalls 里。
+
+
+================================================================================
+14. Windows / macOS 平台迁移与发布约定
+================================================================================
+
+14.1 运行数据目录
+
+  Windows 开发模式继续使用仓库根目录 data\；Windows 打包版继续使用 exe 同级
+  data\，写入失败时退回 Electron userData。macOS 开发与打包统一使用
+  app.getPath('userData')，session 单独放在数据根目录下的 session/，绝不把运行期
+  JSON、缓存或用户密钥写进 TVBox Desktop.app。
+
+  所有 JSON store 仍使用临时文件 + rename 原子写入。设置页的「数据迁移」使用
+  版本化 tvbox-desktop-data ZIP，包含 manifest、白名单 JSON、SHA-256 和可选的
+  presets/*.json；不包含 Cookie、Chromium session、日志和临时响应缓存。
+
+14.2 Windows → macOS 数据迁移
+
+  1) Windows 在「设置 → 数据迁移」导出 ZIP；
+  2) macOS 选择 ZIP，先校验格式、白名单、JSON、文件大小与 SHA-256；
+  3) 导入前备份当前 userData，使用临时文件 + rename 写入；
+  4) 任一写入失败时按备份回滚，成功后刷新主进程和渲染进程缓存；
+  5) Windows 的 .exe / 盘符播放器路径在 macOS 上清空并恢复 IINA → mpv → VLC
+     的默认探测顺序；本地媒体绝对路径不跨机器改写。
+
+14.3 外部播放器
+
+  Windows adapter 保留 Program Files、PATH 和注册表默认关联，候选包括 PotPlayer、
+  mpv、VLC、MPC-HC、MPC-BE、KMPlayer、SMPlayer。macOS adapter 只扫描
+  /Applications、~/Applications、PATH 与 Launch Services，首批候选为 IINA、mpv、
+  VLC；.app 通过 open -a，命令行播放器通过 spawn 参数数组启动。业务层不再判断
+  .exe、Program Files 或 PATH 分隔符。
+
+14.4 构建与签名
+
+  Windows：npm run build:win，产出 x64 NSIS + zip。
+  macOS：npm run build:mac:arm64，产出原生 arm64 DMG + zip；用 file 检查
+  release/mac-arm64/TVBox Desktop.app/Contents/MacOS/TVBox Desktop 必须包含 arm64。
+  未配置 Developer ID 时只视为未签名开发包；正式发布必须提供 Developer ID
+  Application、hardened runtime、Apple notarization 凭据，并在干净 Apple Silicon
+  机器上验证 codesign、spctl、stapler 和 Gatekeeper。详细步骤见
+  docs/macos-arm64-migration/RELEASE.md。
+
+14.5 验收
+
+  Windows 与 macOS 均需通过 npm ci、npm run typecheck、npm run build、npm run selftest；
+  macOS 额外检查 arm64 产物、应用位于只读 /Applications 时仍能写 userData、中文/空格
+  file URL、本地直播、至少两种外部播放器以及 Windows 导出包导入。CI 配置位于
+  .github/workflows/desktop-build.yml。
 
 
 ================================================================================
